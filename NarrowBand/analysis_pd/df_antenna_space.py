@@ -8,12 +8,14 @@
 # find distance between tumor location and projection on the line between
 # each antenna pairs.
 
+# Standard library imports
 import itertools
 import json
 import operator
 import os.path
 import sys
 
+# Third-party library imports
 import jsonpickle
 import matplotlib.pyplot as plt
 #from matplotlib import interactive

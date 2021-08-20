@@ -31,7 +31,7 @@ import json
 import os
 import os.path
 from pathlib import Path
-import re
+# import re
 import warnings
 
 # Third-party library imports
@@ -42,9 +42,9 @@ from dask.diagnostics import ProgressBar
 from natsort import natsorted
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from tqdm.auto import tqdm
 #from tqdm.dask import TqdmCallback
-from yaspin import yaspin
+# from yaspin import yaspin
 
 # Local application imports
 import NarrowBand.analysis_pd.df_antenna_space as dfant

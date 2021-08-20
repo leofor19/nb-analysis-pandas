@@ -42,7 +42,7 @@ from dask.diagnostics import ProgressBar
 from natsort import natsorted
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from tqdm.auto import tqdm
 #from tqdm.dask import TqdmCallback
 from yaspin import yaspin
 
