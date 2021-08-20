@@ -2,7 +2,7 @@
 # 2021-03-05
 
 # Version 1.2.3
-# Latest update 2021-08-19
+# Latest update 2021-08-20
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -87,7 +87,7 @@ ph_dtypes = {
                 "freq": "Float64", "voltage_ch1": "Float64", "voltage_ch2": "Float64", "voltage_mag": "Float64" , "voltage_phase": "Float64"
                 }
 
-def dd_collect(path_list, is_recursive = False, file_format="parquet", columns=None, check_key=None, check_value=None, parquet_engine= 'pyarrow'):
+def dd_collect(path_list, is_recursive = False, file_format="parquet", columns=None, specifier=None, check_key=None, check_value=None, parquet_engine= 'pyarrow'):
     """Collect all Dask DataFrame files in given directory path list.
 
     Returns a list with the DataFrame files found.
@@ -102,6 +102,8 @@ def dd_collect(path_list, is_recursive = False, file_format="parquet", columns=N
         target file format ("parquet" or "csv"), by default "parquet"
     column: list of str, optional
         list of columns to read, by default None (reads all columns)
+    specifier: str, optional
+        string to include only specific files, for instance 'Calibration Processed Means Type 3.parquet', by default None (includes all file paths)
     chcek_key: str, optional
         key to check value, by default None
     chcek_value: number or str, optional
@@ -123,6 +125,9 @@ def dd_collect(path_list, is_recursive = False, file_format="parquet", columns=N
 
     df_paths = natsorted(df_sweep(path_list, is_recursive, file_format))
 
+    if specifier:
+        df_paths = [p for p in df_paths if specifier in p]
+
     df_list = []
     if file_format.casefold() == "parquet":
         for p in tqdm(df_paths):
@@ -135,13 +140,13 @@ def dd_collect(path_list, is_recursive = False, file_format="parquet", columns=N
 
     if check_key is not None:
         # df_list = [df for df in df_list if df.compute()[check_key].eq(check_value).all()]
-        df_list = [df.loc[df[check_key] == check_value] for df in df_list]
+        df_list = [df for df in df_list if (check_key in df.columns) & (df[check_key].eq(check_value).any().compute())]
 
     tqdm.write("", end="\n")
 
     return df_list
 
-def df_collect(path_list, is_recursive = False, file_format="parquet", columns=None, specifier=None, parquet_engine= 'pyarrow'):
+def df_collect(path_list, is_recursive = False, file_format="parquet", columns=None, specifier=None, check_key=None, check_value=None, parquet_engine= 'pyarrow'):
     """Collect all Pandas DataFrame files in given directory path list.
 
     Returns a list with the DataFrame files found.
@@ -158,6 +163,10 @@ def df_collect(path_list, is_recursive = False, file_format="parquet", columns=N
         list of columns to read, by default None (reads all columns)
     specifier: str, optional
         string to include only specific files, for instance 'Calibration Processed Means Type 3.parquet', by default None (includes all file paths)
+    chcek_key: str, optional
+        key to check value, by default None
+    chcek_value: number or str, optional
+        value to check, by default None
     parquet_engine: str, optional
         Parquet reader library to use, by default 'pyarrow'
         Options include: ‘auto’, ‘fastparquet’, ‘pyarrow’.
@@ -188,6 +197,9 @@ def df_collect(path_list, is_recursive = False, file_format="parquet", columns=N
         for p in tqdm(df_paths):
             df_list.append(pd.read_csv(p, usecols = columns, low_memory=False))
             tqdm.write(f"\rOpened file: {p}        ", end="\r")
+
+    if check_key is not None:
+        df_list = [df for df in df_list if (check_key in df.columns) & (df[check_key].eq(check_value).any())]
 
     tqdm.write("",end="\n")
 
@@ -1677,7 +1689,7 @@ def cal4_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Document
 
     # Calibration type 4 - uses data_pd_agg()
 
-    data_pd_agg(date, main_path = main_path, sub_folder = cal_path, 
+    data_pd_agg(date, main_path = main_path, sub_folder1 = cal_path,
                     processed_path = processed_path, correction = correction, conv_path = conv_path, decimals = decimals,
                     save_format=save_format, parquet_engine=parquet_engine, is_recursive= False, cal_option = 4)
 
@@ -1697,7 +1709,7 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
         date(s) in format "YYYY_MM_DD" or date folder "YYYY_MM_DD/"
     main_path : str, optional
         main path to measurement files, by default "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE'])
-    sub_folder2 : str, optional
+    sub_folder1 : str, optional
         sub-folder for file sweep (after date path), by default ""
         searched location will be main_path + sub_folder1 + date_path + "Phantom*/" + sub_folder2
     sub_folder2 : str, optional
@@ -2040,7 +2052,7 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
                 del df_list[:]
                 del file_title, base_path
 
-def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']), sub_folder = "", 
+def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']), sub_folder1 = "", sub_folder2 = "",
                     processed_path = "Processed/DF/", correction = np.around(1.0e3/8192,4), conv_path = "Conv/", decimals = 4,
                     save_format="parquet", parquet_engine= 'pyarrow', is_recursive= False, cal_option = 0):
     """Generates aggregated Pandas DataFrame "phantom data set files".
@@ -2054,9 +2066,12 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
         date in format "YYYY_MM_DD" or date folder "YYYY_MM_DD/"
     main_path : str, optional
         main path to measurement files, by default "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE'])
-    sub_folder : str, optional
-        sub-folder for file sweep, by default ""
-        searched location will be main_path + "Phantom*/" + sub_folder
+    sub_folder1 : str, optional
+        sub-folder for file sweep (after date path), by default ""
+        searched location will be main_path + date_path  + sub_folder1+ "Phantom*/" + sub_folder2
+    sub_folder2 : str, optional
+        sub-folder for file sweep (after phantom info), by default ""
+        searched location will be main_path + date_path + sub_folder1 + "Phantom*/" + sub_folder2
     processed_path : str, optional
         sub-folder for output JSON files, by default "Processed/DF"
         final location will be main_path + processed_path
@@ -2092,17 +2107,17 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
 
     for d in tqdm(date):
 
-        main_paths = ["".join((main_path,d,"/",processed_path, sub_folder, conv_path))]
+        main_paths = ["".join((main_path,d,"/",processed_path, sub_folder1, conv_path))]
 
-        out_path1 = "".join((main_path,d,"/",processed_path,"Means/{0} Phantom Set Means.parquet".format(d)))
-        out_path2 = "".join((main_path,d,"/",processed_path,"Means Agg by Rep/{0} Phantom Set Agg Means by Rep.parquet".format(d)))
-        out_path3 = "".join((main_path,d,"/",processed_path,"Means Agg/{0} Phantom Set Means Agg.parquet".format(d)))
+        out_path1 = "".join((main_path,d,"/",processed_path, sub_folder1, "Means/{0} Phantom Set Means.parquet".format(d)))
+        out_path2 = "".join((main_path,d,"/",processed_path, sub_folder1, "Means Agg by Rep/{0} Phantom Set Agg Means by Rep.parquet".format(d)))
+        out_path3 = "".join((main_path,d,"/",processed_path, sub_folder1, "Means Agg/{0} Phantom Set Means Agg.parquet".format(d)))
 
         if cal_option == 0:
             ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns, parquet_engine=parquet_engine)
         else:
-            ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns + ["cal_type"], check_key="cal_type", check_value= cal_option,
-                                    parquet_engine=parquet_engine)
+            ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns + ["cal_type"], specifier = 'Calibration Type 4',
+                                    check_key="cal_type", check_value= cal_option, parquet_engine=parquet_engine)
 
         df_list1 = []
         df_list2 = []
@@ -2112,11 +2127,10 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
             dunit = ddf.digital_unit.compute().head(1).item()
 
             if cal_option != 0:
-                cal_type = ddf.cal_type.unique()
+                cal_type = ddf.cal_type.compute().head(1).item()
                 ddf = ddf.drop("cal_type", axis=1)
 
             ddf = ddf.apply(lambda x: uncategorize(x), axis=1, meta=ddf)
-            print(ddf.columns)
             ddf1 = ddf.drop("digital_unit", axis=1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq"], observed=True).agg(['mean', 'std'])
 
             df1 = ddf1.compute()
@@ -2133,7 +2147,7 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
             df_convert_values(df1, correction = correction)
 
             if cal_option != 0:
-                df1["cal_type"] = cal_type
+                df1.loc[:,"cal_type"] = cal_type
 
             df_list1.append(df1)
 
@@ -2152,7 +2166,7 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
             df_convert_values(df2, correction = correction)
 
             if cal_option != 0:
-                df2["cal_type"] = cal_type
+                df2.loc[:, "cal_type"] = cal_type
 
             df_list2.append(df2)
 
@@ -2171,7 +2185,7 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
             df_convert_values(df3, correction = correction)
 
             if cal_option != 0:
-                df3["cal_type"] = cal_type
+                df3.loc[:, "cal_type"] = cal_type
 
             df_list3.append(df3)
 
