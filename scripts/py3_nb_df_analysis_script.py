@@ -1,7 +1,9 @@
 # Standard library imports
+from NarrowBand.analysis_pd.uncategorize import uncategorize
 from datetime import datetime
 import os
 import os.path
+from pathlib import Path
 import sys
 #import warnings
 
@@ -12,12 +14,13 @@ import numpy as np
 import pandas as pd
 import pingouin as pg
 import seaborn as sn
-import statsmodels as stm
 
 # Local application imports
 #from ..NarrowBand.analysis_pd import df_processing as dfproc
-sys.path.insert(1, os.path.abspath('{}/OneDrive - McGill University/Documents McGill/2019.2/LabTools Scripts/2021_08_12 Adaptations 14/'.format(os.environ['USERPROFILE'])))
+two_up = Path(__file__).resolve().parents[1]
+sys.path.insert(1, str(two_up))
 from NarrowBand.analysis_pd import df_processing as dfproc
+#from NarrowBand.analysis_pd import uncategorize as uncat
 
 # Main location path of Pandas DataFrame files (.parquet)
 
@@ -29,7 +32,8 @@ main_path = "{}/OneDrive - McGill University/Narrow Band Data1/PScope/".format(o
 #meas_dates = ["2019_08_29", "2019_09_05", "2019_09_06", "2019_09_30", "2019_10_30", "2019_11_08", "2019_11_13",
 #                 "2020_01_17", "2020_01_20", "2020_01_21", "2020_01_22", "2020_01_23"]
 
-meas_dates = ["2021_08_16"]
+# meas_dates = ["2021_08_16"]
+meas_dates = ["2021_08_18"]
 
 #meas_dates = ["2020_09_14", "2020_09_15", "2020_09_16", "2020_09_21", "2020_09_23"]
 
@@ -94,19 +98,37 @@ decimals = 4
 # Process the data, generating Pandas Data Frames with aggregated data "scan data set" files in processed_path sub-folder (only needs to be performed once for new measurement sets)
 
 
-#dfproc.cal_data_read2pandas(meas_dates, main_path = main_path, cal_path = "Calibration/", processed_path = processed_path, correction = correction, 
+# dfproc.cal_data_read2pandas(meas_dates, main_path = main_path, cal_path = "Calibration/", processed_path = processed_path, correction = correction, 
 #                            conv_path = conv_path, decimals = decimals, save_format=file_format)
 
-for date in meas_dates:
-    dfproc.cal_data_pd_compile(date, main_path = main_path, cal_path = "Calibration/", processed_path = processed_path, conv_path = conv_path, 
-                            file_format=file_format, is_recursive=is_recursive)
+# for date in meas_dates:
+#     dfproc.cal_data_pd_compile(date, main_path = main_path, cal_path = "Calibration/", processed_path = processed_path, conv_path = conv_path, 
+#                             file_format=file_format, is_recursive=is_recursive)
 
-    dfproc.cal_data_pd_agg(date, main_path = main_path, cal_path = "Calibration/", processed_path = processed_path, correction = correction, 
-                            conv_path = conv_path, decimals = decimals, save_format=file_format)
+#     dfproc.cal_data_pd_agg(date, main_path = main_path, cal_path = "Calibration/", processed_path = processed_path, correction = correction, 
+#                             conv_path = conv_path, decimals = decimals, save_format=file_format)
 
-#dfproc.case_data_read2pandas(meas_dates, main_path = main_path, sub_folder = "", processed_path = processed_path, correction = correction,
+# dfproc.cal4_data_read2pandas(meas_dates, main_path = main_path, cal_path = "Calibration/", processed_path = processed_path, correction = correction, 
+#                            conv_path = conv_path, decimals = decimals, save_format=file_format)
+
+# for date in meas_dates:
+#     dfproc.cal4_data_pd_agg(date, main_path = main_path, cal_path = "Calibration/", processed_path = processed_path, correction = correction, 
+#                             conv_path = conv_path, decimals = decimals, save_format=file_format)
+
+# dfproc.case_data_read2pandas(meas_dates, main_path = main_path, sub_folder2 = "", processed_path = processed_path, correction = correction,
 #                             conv_path = conv_path, decimals = decimals, cal_rep = 1, save_format=file_format)
 
 #for date in meas_dates:
 #    dfproc.data_pd_agg(date, main_path = main_path, sub_folder = sub_folder, processed_path = processed_path, correction = correction, conv_path = conv_path, 
 #                    decimals = decimals, file_format=file_format, is_recursive= is_recursive)
+
+p = "C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/2021_08_18/Processed/DF 03/Calibration/Conv"
+
+ddf = dfproc.dd_collect(p, is_recursive = False, file_format="parquet", columns=None, check_key="cal_type", check_value=4)
+
+ddf1 = []
+
+# for data in ddf:
+#     ddf1.append(data.apply(lambda x: uncat.uncategorize(x), axis=0))
+
+print(dd.concat(ddf1, axis=0).head())

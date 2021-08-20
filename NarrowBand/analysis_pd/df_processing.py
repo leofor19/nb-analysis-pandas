@@ -1,7 +1,8 @@
 # Python 3.8
 # 2021-03-05
 
-# Version 1.2.2
+# Version 1.2.3
+# Latest update 2021-08-19
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -31,6 +32,7 @@ import os
 import os.path
 from pathlib import Path
 import re
+import sys
 import warnings
 
 # Third-party library imports
@@ -85,7 +87,7 @@ ph_dtypes = {
                 "freq": "Float64", "voltage_ch1": "Float64", "voltage_ch2": "Float64", "voltage_mag": "Float64" , "voltage_phase": "Float64"
                 }
 
-def dd_collect(path_list, is_recursive = False, file_format="parquet", columns=None, check_key=None, check_value=None):
+def dd_collect(path_list, is_recursive = False, file_format="parquet", columns=None, check_key=None, check_value=None, parquet_engine= 'pyarrow'):
     """Collect all Dask DataFrame files in given directory path list.
 
     Returns a list with the DataFrame files found.
@@ -96,14 +98,19 @@ def dd_collect(path_list, is_recursive = False, file_format="parquet", columns=N
         list of paths to measurement files
     is_recursive : bool, optional
         set to True to make sweep recursive (access folders inside the sub_folder path), by default False
-    file_format: str
+    file_format: str, optional
         target file format ("parquet" or "csv"), by default "parquet"
-    column: list of str
+    column: list of str, optional
         list of columns to read, by default None (reads all columns)
-    chcek_key: str
+    chcek_key: str, optional
         key to check value, by default None
-    chcek_value: number or str
+    chcek_value: number or str, optional
         value to check, by default None
+    parquet_engine: str, optional
+        Parquet reader library to use, by default 'pyarrow'
+        Options include: ‘auto’, ‘fastparquet’, ‘pyarrow’.
+        The ‘auto’ option selects the FastParquetEngine if fastparquet is installed (and ArrowDatasetEngine otherwise).
+        If ‘pyarrow’ or ‘pyarrow-dataset’ is specified, the ArrowDatasetEngine (which leverages the pyarrow.dataset API) will be used.
 
     Returns
     ----------
@@ -118,22 +125,23 @@ def dd_collect(path_list, is_recursive = False, file_format="parquet", columns=N
 
     df_list = []
     if file_format.casefold() == "parquet":
-        for p in df_paths:
-            df_list.append(dd.read_parquet(p, engine='fastparquet', columns=columns))
-            print("\rOpened file: ",p, "        ", end="\r")
+        for p in tqdm(df_paths):
+            df_list.append(dd.read_parquet(p, engine=parquet_engine, columns=columns))
+            tqdm.write(f"\rOpened file: {p}        ", end="\r")
     elif file_format.casefold() == "csv":
-        for p in df_paths:
+        for p in tqdm(df_paths):
             df_list.append(dd.read_csv(p, cols = columns, low_memory=False))
-            print("\rOpened file: ",p, "        ", end="\r")
+            tqdm.write(f"\rOpened file: {p}        ", end="\r")
 
     if check_key is not None:
-        df_list = [df for df in df_list if df.compute()[check_key].eq(check_value).all()]
+        # df_list = [df for df in df_list if df.compute()[check_key].eq(check_value).all()]
+        df_list = [df.loc[df[check_key] == check_value] for df in df_list]
 
-    print("",end="\n")
+    tqdm.write("", end="\n")
 
     return df_list
 
-def df_collect(path_list, is_recursive = False, file_format="parquet", columns=None, specifier=None):
+def df_collect(path_list, is_recursive = False, file_format="parquet", columns=None, specifier=None, parquet_engine= 'pyarrow'):
     """Collect all Pandas DataFrame files in given directory path list.
 
     Returns a list with the DataFrame files found.
@@ -150,6 +158,12 @@ def df_collect(path_list, is_recursive = False, file_format="parquet", columns=N
         list of columns to read, by default None (reads all columns)
     specifier: str, optional
         string to include only specific files, for instance 'Calibration Processed Means Type 3.parquet', by default None (includes all file paths)
+    parquet_engine: str, optional
+        Parquet reader library to use, by default 'pyarrow'
+        Options include: ‘auto’, ‘fastparquet’, ‘pyarrow’.
+        If ‘auto’, then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try ‘pyarrow’,
+        falling back to ‘fastparquet’ if ‘pyarrow’ is unavailable.
 
     Returns
     ----------
@@ -167,15 +181,15 @@ def df_collect(path_list, is_recursive = False, file_format="parquet", columns=N
 
     df_list = []
     if file_format.casefold() == "parquet":
-        for p in df_paths:
-            df_list.append(pd.read_parquet(p, engine='fastparquet', columns=columns))
-            print("\rOpened file: ",p, "        ", end="\r")
+        for p in tqdm(df_paths):
+            df_list.append(pd.read_parquet(p, engine=parquet_engine, columns=columns))
+            tqdm.write(f"\rOpened file: {p}        ", end="\r")
     elif file_format.casefold() == "csv":
-        for p in df_paths:
+        for p in tqdm(df_paths):
             df_list.append(pd.read_csv(p, usecols = columns, low_memory=False))
-            print("\rOpened file: ",p, "        ", end="\r")
+            tqdm.write(f"\rOpened file: {p}        ", end="\r")
 
-    print("",end="\n")
+    tqdm.write("",end="\n")
 
     return df_list
 
@@ -304,13 +318,12 @@ def power2dBm(power_W, noise_floor = -108):
 
     return 10.0 * np.log10(power_W, where= power_W > 0) + 30
 
-
 def milivolts2dBm(milivolts, Z = 50.0, noise_floor = 0.1252):
     """Convert mV to dBm.
 
     Zero values are replaced by a noise floor estimation, by default 0.1252 mV.
 
-    This avoids NaN results.
+    This avoids NaN results. Should be used only for specific use cases (digital resolution and noise floor can be estimated).
 
     Parameters
     ----------
@@ -338,7 +351,7 @@ def volts2dBm(volts, Z = 50.0, noise_floor = 0.1252):
 
     Zero values are replaced by a noise floor estimation, by default 0.1252 mV.
 
-    This avoids NaN results.
+    This avoids NaN results. Should be used only for specific use cases (digital resolution and noise floor can be estimated).
 
     Parameters
     ----------
@@ -429,10 +442,10 @@ def allpairs2list2(df, select_ref = 1):
     Parameters
     ----------
     df : DataFrame
-        phantom scan data set
+        phantom scan comparison data set
     select_ref: int
         which element of the comparison pairs to use as reference for sorting (1 or 2), by default 1
-        this is NOT the phantom number, but refers to the compared pair (column on DataFrame), usually both are the same
+        this is NOT the phantom number, but refers to the compared pair (column on DataFrame), usually both phantoms are the same
 
     Returns
     ----------
@@ -495,9 +508,9 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
     if not isinstance(df, list):
         df = [df]
 
-    for df1 in df:
-        for ph in df1.phantom.drop_duplicates().to_list():
-            for ang in df1.loc[df1.phantom.eq(ph), "angle"].drop_duplicates().to_list():
+    for df1 in tqdm(df):
+        for ph in tqdm(df1.phantom.drop_duplicates().to_list(), leave= False):
+            for ang in tqdm(df1.loc[df1.phantom.eq(ph), "angle"].drop_duplicates().to_list(), leave= False):
 
                 df_list.append(df1.loc[df1.phantom.eq(ph) & df1.angle.eq(ang)])
 
@@ -569,9 +582,9 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
     if not isinstance(df, list):
         df = [df]
 
-    for df1 in df:
-        for ph in df1[p].drop_duplicates().to_list():
-            for ang in df1.loc[df1[p].eq(ph), a].drop_duplicates().to_list():
+    for df1 in tqdm(df):
+        for ph in tqdm(df1[p].drop_duplicates().to_list(), leave= False):
+            for ang in tqdm(df1.loc[df1[p].eq(ph), a].drop_duplicates().to_list(), leave= False):
 
                 df_list.append(df1.loc[df1[p].eq(ph) & df1[a].eq(ang)])
 
@@ -657,7 +670,7 @@ def pivot_for_multivariate(df, index=None, columns=list(["pair","freq"]), values
 
 def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']), cal_path = "Calibration/", 
                     processed_path = "Processed/DF/", correction = np.around(1.0e3/8192,4), conv_path = "Converted/", decimals = 4,
-                    save_format="parquet"):
+                    save_format="parquet", parquet_engine= 'pyarrow'):
     """Generate Pandas DataFrame "calibration file" from PScope .adc files.
 
     First, sweeps trough main_path + date_path + cal_path folders and lists all .adc files found.
@@ -684,6 +697,12 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
         number of decimals cases for np.arounding values, in particular after conversion, by default 2
     save_format: str
         target file format (either "parquet" or "csv"), by default "parquet"
+    parquet_engine: str, optional
+        Parquet reader library to use, by default 'pyarrow'
+        Options include: ‘auto’, ‘fastparquet’, ‘pyarrow’.
+        If ‘auto’, then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try ‘pyarrow’,
+        falling back to ‘fastparquet’ if ‘pyarrow’ is unavailable.
     """
 
     if not isinstance(dates, list):
@@ -771,7 +790,10 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
                         file_title = " ".join((date_path.replace( "/",""), "Calibration Type 1 D", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
 
                     if save_format.casefold() == "parquet":
-                        cal_df1.to_parquet(base_path + file_title + ".parquet", engine='fastparquet', object_encoding='utf8')
+                        if parquet_engine == 'pyarrow':
+                            cal_df1.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, index= False)
+                        else:
+                            cal_df1.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, object_encoding='utf8', write_index= False)
                     else:
                         cal_df1.to_csv(base_path + file_title + ".csv")
                     tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
@@ -836,7 +858,10 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
                     file_title = " ".join((date_path.replace( "/",""), "Calibration Type 1 D", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
 
                 if save_format.casefold() == "parquet":
-                    cal_df1.to_parquet(base_path + file_title + ".parquet", engine='fastparquet', object_encoding='utf8')
+                    if parquet_engine == 'pyarrow':
+                        cal_df1.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, index= False)
+                    else:
+                        cal_df1.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, object_encoding='utf8', write_index= False)
                 else:
                     cal_df1.to_csv(base_path + file_title + ".csv")
                 tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
@@ -918,7 +943,10 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
                         file_title = " ".join((date_path.replace( "/",""), "Calibration Type 2 D", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
 
                     if save_format.casefold() == "parquet":
-                        cal_df2.to_parquet(base_path + file_title + ".parquet", engine='fastparquet', object_encoding='utf8')
+                        if parquet_engine == 'pyarrow':
+                            cal_df2.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, index= False)
+                        else:
+                            cal_df2.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, object_encoding='utf8', write_index= False)
                     else:
                         cal_df2.to_csv(base_path + file_title + ".csv")
                     tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
@@ -984,7 +1012,10 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
                     file_title = " ".join((date_path.replace( "/",""), "Calibration Type 2 D", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
 
                 if save_format.casefold() == "parquet":
-                    cal_df2.to_parquet(base_path + file_title + ".parquet", engine='fastparquet', object_encoding='utf8')
+                    if parquet_engine == 'pyarrow':
+                        cal_df2.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, index= False)
+                    else:
+                        cal_df2.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, object_encoding='utf8', write_index= False)
                 else:
                     cal_df2.to_csv(base_path + file_title + ".csv")
                 tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
@@ -1067,7 +1098,10 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
                         file_title = " ".join((date_path.replace( "/",""), "Calibration Type 3 D", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
 
                     if save_format.casefold() == "parquet":
-                        cal_df3.to_parquet(base_path + file_title + ".parquet", engine='fastparquet', object_encoding='utf8')
+                        if parquet_engine == 'pyarrow':
+                            cal_df3.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, index= False)
+                        else:
+                            cal_df3.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, object_encoding='utf8', write_index= False)
                     else:
                         cal_df3.to_csv(base_path + file_title + ".csv")
                     tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
@@ -1134,7 +1168,10 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
                     file_title = " ".join((date_path.replace( "/",""), "Calibration Type 3 D", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
 
                 if save_format.casefold() == "parquet":
-                    cal_df3.to_parquet(base_path + file_title + ".parquet", engine='fastparquet', object_encoding='utf8')
+                    if parquet_engine == 'pyarrow':
+                        cal_df3.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, index= False)
+                    else:
+                        cal_df3.to_parquet(base_path + file_title + ".parquet", engine=parquet_engine, object_encoding='utf8', write_index= False)
                 else:
                     cal_df3.to_csv(base_path + file_title + ".csv")
                 tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
@@ -1143,19 +1180,8 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
                 del cal_df3_list[:]
                 del file_title, base_path, cal_df3
 
-        # Calibration type 4 - uses case_data_read2pandas() with specific options
-
-        extra_type = "Type 4/"
-
-        base_path4 = "".join((main_path, date_path, cal_path, extra_type))
-        if os.path.exists(os.path.dirname(base_path4)):
-
-            case_data_read2pandas(dates, main_path = main_path, sub_folder1 = "".join((cal_path, extra_type)),
-                        processed_path = "".join((processed_path, cal_path)), correction = correction, conv_path = conv_path,
-                        decimals = decimals, cal_rep = 1, save_format=save_format, cal_option = 4)
-
 def cal_data_pd_compile(date, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']), cal_path = "Calibration/", 
-                    processed_path = "Processed/DF/", conv_path = "Conv/", file_format="parquet", is_recursive=False):
+                    processed_path = "Processed/DF/", conv_path = "Conv/", file_format="parquet", parquet_engine= 'pyarrow', is_recursive=False):
     """Compiles Pandas DataFrame "calibration files" into single parquet file for each calibration type (1-3).
 
     Parameters
@@ -1199,16 +1225,27 @@ def cal_data_pd_compile(date, main_path = "{}/OneDrive - McGill University/Docum
     if not os.path.exists(os.path.dirname(out_path)):
         os.makedirs(os.path.dirname(out_path))
 
-    df1.to_parquet(out_path.replace("NUM","1"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path.replace("NUM","1"),"        ")
-    df2.to_parquet(out_path.replace("NUM","2"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path.replace("NUM","2"),"        ")
-    df3.to_parquet(out_path.replace("NUM","3"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path.replace("NUM","3"),"        ")
+    if parquet_engine == 'pyarrow':
+        df1.to_parquet(out_path.replace("NUM","1"), engine=parquet_engine, index= False)
+    else:
+        df1.to_parquet(out_path.replace("NUM","1"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path.replace("NUM","1")}        ')
+
+    if parquet_engine == 'pyarrow':
+        df2.to_parquet(out_path.replace("NUM","2"), engine=parquet_engine, index= False)
+    else:
+        df2.to_parquet(out_path.replace("NUM","2"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path.replace("NUM","2")}        ')
+
+    if parquet_engine == 'pyarrow':
+        df3.to_parquet(out_path.replace("NUM","3"), engine=parquet_engine, index= False)
+    else:
+        df3.to_parquet(out_path.replace("NUM","3"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path.replace("NUM","3")}        ')
 
 def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']), cal_path = "Calibration/", 
                     processed_path = "Processed/DF/", correction = np.around(1.0e3/8192,4), conv_path = "Converted/", decimals = 4,
-                    save_format="parquet"):
+                    save_format="parquet", parquet_engine= 'pyarrow'):
     """Generates aggregated Pandas DataFrame "calibration files" for each calibration type.
 
     First, sweeps trough main_path + date_path + cal_path folders and lists all .adc files found.
@@ -1246,10 +1283,9 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
         out_path1= "".join((main_path,date,"/",processed_path,cal_path,"Means/{} Calibration Processed Means Type NUM.parquet".format(date)))
         out_path2= "".join((main_path,date,"/",processed_path,cal_path,"Means Agg/{} Calibration Processed Agg Means Type NUM.parquet".format(date)))
 
-    main_path0 = main_path
     main_path = "".join((main_path,date,"/",processed_path,cal_path,"Comp/",date," Compiled Calibration Type NUM.parquet"))
 
-    df = dd.read_parquet(main_path.replace("NUM","1"), engine='fastparquet', dtypes={
+    df = dd.read_parquet(main_path.replace("NUM","1"), engine=parquet_engine, dtypes={
                     "voltage_unit": "category", "digital_unit": "category", "obs": "category", "samp_rate": "category", "nsamples": "category", "iter": "category", "rep": "category", "date": "category",
                     "cal_type": "category", "attRF": "category", "attLO": "category", "raw_digital_ch1": "int64", "raw_digital_ch2": "int64", "time": "Float64", "freq": "category",
                     "voltage_ch1": "Float64", "voltage_ch2": "Float64", "voltage_mag": "Float64" , "voltage_phase": "Float64"
@@ -1269,8 +1305,11 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
 
     if not os.path.exists(os.path.dirname(out_path1)):
         os.makedirs(os.path.dirname(out_path1))
-    df1.to_parquet(out_path1.replace("NUM","1"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path1.replace("NUM","1"),"        ")
+    if parquet_engine == 'pyarrow':
+        df1.to_parquet(out_path1.replace("NUM","1"), engine=parquet_engine, index= False)
+    else:
+        df1.to_parquet(out_path1.replace("NUM","1"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path1.replace("NUM","1")}        ')
 
     df1 = df.groupby(["date", "attLO", "attRF", "samp_rate", "nsamples","cal_type", "digital_unit", "voltage_unit", "obs", "freq"], observed=True).agg(digital_ch1 = ("raw_digital_ch1", "mean"),
                     digital_ch2 = ("raw_digital_ch2","mean"), std_digital_ch1 =("raw_digital_ch1", "std"), std_digital_ch2 = ("raw_digital_ch2", "std"))
@@ -1286,12 +1325,15 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
 
     if not os.path.exists(os.path.dirname(out_path2)):
         os.makedirs(os.path.dirname(out_path2))
-    df1.to_parquet(out_path2.replace("NUM","1"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path2.replace("NUM","1"),"        ")
+    if parquet_engine == 'pyarrow':
+        df1.to_parquet(out_path2.replace("NUM","1"), engine=parquet_engine, index= False)
+    else:
+        df1.to_parquet(out_path2.replace("NUM","1"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path2.replace("NUM","1")}        ')
 
     df["subject"] = df["date"].astype(str) + " Rep " + df["rep"].astype(str) + " Iter " + df["iter"].astype(str)
 
-    df = dd.read_parquet(main_path.replace("NUM","2"), engine='fastparquet', dtypes={
+    df = dd.read_parquet(main_path.replace("NUM","2"), engine=parquet_engine, dtypes={
                         "voltage_unit": "category", "digital_unit": "category", "obs": str, "samp_rate": "category", "nsamples": "category", "iter": "category", "rep": "category", "date": str,
                         "cal_type": "category", "attRF": "category", "attLO": "int32", "raw_digital_ch1": "int64", "raw_digital_ch2": "int64", "time": "Float64", "freq": "category",
                         "voltage_ch1": "Float64", "voltage_ch2": "Float64", "voltage_mag": "Float64" , "voltage_phase": "Float64"
@@ -1312,8 +1354,11 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
 
     if not os.path.exists(os.path.dirname(out_path1)):
         os.makedirs(os.path.dirname(out_path1))
-    df21.to_parquet(out_path1.replace("NUM","2"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path1.replace("NUM","2"),"        ")
+    if parquet_engine == 'pyarrow':
+        df21.to_parquet(out_path1.replace("NUM","2"), engine=parquet_engine, index= False)
+    else:
+        df21.to_parquet(out_path1.replace("NUM","2"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path1.replace("NUM","2")}        ')
 
     df22 = df.groupby(["date", "attLO", "attRF", "samp_rate", "nsamples","cal_type", "digital_unit", "voltage_unit", "obs", "freq"], observed=True).agg(digital_ch1 = ("raw_digital_ch1", "mean"),
                         digital_ch2 = ("raw_digital_ch2","mean"), std_digital_ch1 =("raw_digital_ch1", "std"), std_digital_ch2 = ("raw_digital_ch2", "std"))
@@ -1329,10 +1374,13 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
 
     if not os.path.exists(os.path.dirname(out_path2)):
         os.makedirs(os.path.dirname(out_path2))
-    df22.to_parquet(out_path2.replace("NUM","2"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path2.replace("NUM","2"),"        ")
+    if parquet_engine == 'pyarrow':
+        df22.to_parquet(out_path2.replace("NUM","2"), engine=parquet_engine, index= False)
+    else:
+        df22.to_parquet(out_path2.replace("NUM","2"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path2.replace("NUM","2")}        ')
 
-    df = dd.read_parquet(main_path.replace("NUM","3"), engine='fastparquet', dtypes={
+    df = dd.read_parquet(main_path.replace("NUM","3"), engine=parquet_engine, dtypes={
                         "voltage_unit": "category", "digital_unit": "category", "obs": "category", "samp_rate": "category", "nsamples": "category", "iter": "category", "rep": "category", "date": "category",
                         "cal_type": "category", "attRF": "int32", "attLO": "int32", "raw_digital_ch1": "int64", "raw_digital_ch2": "int64", "time": "Float64", "freq": "category",
                         "voltage_ch1": "Float64", "voltage_ch2": "Float64", "voltage_mag": "Float64" , "voltage_phase": "Float64"
@@ -1373,8 +1421,11 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
 
     if not os.path.exists(os.path.dirname(out_path1)):
         os.makedirs(os.path.dirname(out_path1))
-    df3.to_parquet(out_path1.replace("NUM","3"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path1.replace("NUM","3"),"        ")
+    if parquet_engine == 'pyarrow':
+        df3.to_parquet(out_path1.replace("NUM","3"), engine=parquet_engine, index= False)
+    else:
+        df3.to_parquet(out_path1.replace("NUM","3"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path1.replace("NUM","3")}        ')
 
     df_ref = df3.groupby(["attLO", "attRF", "freq"], observed=True).agg(digital_ch1 = ("digital_ch1", "mean"), digital_ch2 = ("digital_ch2","mean"), 
                     std_digital_ch1 = ("digital_ch1", "std"), std_digital_ch2 = ("digital_ch2", "std"), c_digital_ch1 = ("c_digital_ch1", "mean"), 
@@ -1391,8 +1442,11 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
 
     if not os.path.exists(os.path.dirname(out_path1)):
         os.makedirs(os.path.dirname(out_path1))
-    df_ref.to_parquet(out_path1.replace("NUM","3 Ref"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path1.replace("NUM","3 Ref"),"        ")
+    if parquet_engine == 'pyarrow':
+        df_ref.to_parquet(out_path1.replace("NUM","3 Ref"), engine=parquet_engine, index= False)
+    else:
+        df_ref.to_parquet(out_path1.replace("NUM","3 Ref"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path1.replace("NUM","3 Ref")}        ')
 
     df4 = df3.drop(columns= ["digital_ch1", "digital_ch2", "voltage_ch1", "voltage_ch2", "voltage_mag", "voltage_phase"])
 
@@ -1435,8 +1489,11 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
 
     if not os.path.exists(os.path.dirname(out_path1)):
         os.makedirs(os.path.dirname(out_path1))
-    df4.to_parquet(out_path1.replace("NUM","3 Offsets"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path1.replace("NUM","3 Offsets"),"        ")
+    if parquet_engine == 'pyarrow':
+        df4.to_parquet(out_path1.replace("NUM","3 Offsets"), engine=parquet_engine, index= False)
+    else:
+        df4.to_parquet(out_path1.replace("NUM","3 Offsets"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path1.replace("NUM","3 Offsets")}        ')
 
     del df4
 
@@ -1463,15 +1520,21 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
 
     if not os.path.exists(os.path.dirname(out_path2)):
         os.makedirs(os.path.dirname(out_path2))
-    df3.to_parquet(out_path2.replace("NUM","3"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path2.replace("NUM","3"),"        ")
+    if parquet_engine == 'pyarrow':
+        df3.to_parquet(out_path2.replace("NUM","3"), engine=parquet_engine, index= False)
+    else:
+        df3.to_parquet(out_path2.replace("NUM","3"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path2.replace("NUM","3")}        ')
 
     convert2category(df_ref, cols = ["freq"])
 
     if not os.path.exists(os.path.dirname(out_path2)):
         os.makedirs(os.path.dirname(out_path2))
-    df_ref.to_parquet(out_path2.replace("NUM","3 Ref"), engine='fastparquet')
-    print("\nSaved file: ",out_path2.replace("NUM","3 Ref"),"        ")
+    if parquet_engine == 'pyarrow':
+        df_ref.to_parquet(out_path2.replace("NUM","3 Ref"), engine=parquet_engine, index= False)
+    else:
+        df_ref.to_parquet(out_path2.replace("NUM","3 Ref"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path2.replace("NUM","3 Ref")}        ')
 
     df4 = df3.drop(columns= ["digital_ch1", "digital_ch2", "voltage_ch1", "voltage_ch2", "voltage_mag", "voltage_phase"])
 
@@ -1509,18 +1572,118 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
 
     if not os.path.exists(os.path.dirname(out_path2)):
         os.makedirs(os.path.dirname(out_path2))
-    df4.to_parquet(out_path2.replace("NUM","3 Offsets"), engine='fastparquet', object_encoding='utf8')
-    print("\nSaved file: ",out_path2.replace("NUM","3 Offsets"),"        ")
+    if parquet_engine == 'pyarrow':
+        df4.to_parquet(out_path2.replace("NUM","3 Offsets"), engine=parquet_engine, index= False)
+    else:
+        df4.to_parquet(out_path2.replace("NUM","3 Offsets"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path2.replace("NUM","3 Offsets")}        ')
+
+def cal4_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']), cal_path = "Calibration/", 
+                    processed_path = "Processed/DF/", correction = np.around(1.0e3/8192,4), conv_path = "Converted/", decimals = 4,
+                    save_format="parquet", parquet_engine= 'pyarrow'):
+    """Generate Pandas DataFrame "calibration file" for calibration type 4 from PScope .adc files.
+
+    This data processing step should be performed after cal_data_pd_agg().
+
+    Uses case_data_read2pandas() with custom inputs.
+
+    Parameters
+    ----------
+    dates : str or list of str
+        date(s) in format "YYYY_MM_DD" or date folder "YYYY_MM_DD/"
+    main_path : str, optional
+        main path to measurement files, by default "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE'])
+    cal_path : str, optional
+        sub-folder with calibration files, by default "Calibration/"
+    processed_path : str, optional
+        sub-folder for output JSON files, by default "Processed/DF/"
+        final location will be main_path + processed_path + cal_path
+    correction : float, optional
+        conversion scale factor for digital scale data, by default np.around(1.0e3/8192,4)
+        default is equivalent to 0.1831 mV per ADC unit
+        set to 1 for no converted files
+    conv_path : str, optional
+        sub-folder for JSON files of converted data (if correction != 1), by default "Converted/"
+    decimals : int, optional
+        number of decimals cases for np.arounding values, in particular after conversion, by default 2
+    save_format: str
+        target file format (either "parquet" or "csv"), by default "parquet"
+    parquet_engine: str, optional
+        Parquet reader library to use, by default 'pyarrow'
+        Options include: ‘auto’, ‘fastparquet’, ‘pyarrow’.
+        If ‘auto’, then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try ‘pyarrow’,
+        falling back to ‘fastparquet’ if ‘pyarrow’ is unavailable.
+    """
+
+    if not isinstance(dates, list):
+        dates = [dates]
+
+    extra_type = "Type 4/"
+
+    for date in tqdm(dates):
+
+        date_path = _date2path(date)
+
+        base_path4 = "".join((main_path, date_path, cal_path, extra_type))
+        if os.path.exists(os.path.dirname(base_path4)):
+
+            # Calibration type 4 - uses case_data_read2pandas() with specific options
+
+            case_data_read2pandas(dates, main_path = main_path, sub_folder1 = "".join((cal_path, extra_type)),
+                        processed_path = "".join((processed_path, cal_path)), correction = correction, conv_path = conv_path,
+                        decimals = decimals, save_format=save_format, parquet_engine=parquet_engine, cal_option = 4)
+
+        else:
+            tqdm.write(f'No Calibration Type 4 files found for {date}!', end='\n')
+
+def cal4_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']), cal_path = "Calibration/", 
+                    processed_path = "Processed/DF/", correction = np.around(1.0e3/8192,4), conv_path = "Converted/", decimals = 4,
+                    save_format="parquet", parquet_engine= 'pyarrow'):
+    """Generates aggregated Pandas DataFrame "calibration files" for calibration type 4.
+
+    Uses data_pd_agg() with custom inputs.
+
+    Parameters
+    ----------
+    date : str,
+        date in format "YYYY_MM_DD" or date folder "YYYY_MM_DD/"
+    main_path : str, optional
+        main path to measurement files, by default "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE'])
+    cal_path : str, optional
+        sub-folder with calibration files, by default "Calibration/"
+    processed_path : str, optional
+        sub-folder for output JSON files, by default "Processed/"
+        final location will be main_path + processed_path + cal_path)
+    confidence : float, optional
+        tolerance for confidence interval estimation, by default 0.95
+    correction : float, optional
+        conversion scale factor for digital scale data, by default np.around(1.0e3/8192,4)
+        default is equivalent to 0.1831 mV per ADC unit
+        set to 1 for no converted files
+    conv_path : str, optional
+        sub-folder for JSON files of converted data (if correction != 1), by default "Converted/"
+    decimals : int, optional
+        number of decimals cases for np.arounding values, in particular after conversion, by default 2
+    save_format: str
+        target file format (either "parquet" or "csv"), by default "parquet"
+    parquet_engine: str, optional
+        Parquet reader library to use, by default 'pyarrow'
+        Options include: ‘auto’, ‘fastparquet’, ‘pyarrow’.
+        If ‘auto’, then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try ‘pyarrow’,
+        falling back to ‘fastparquet’ if ‘pyarrow’ is unavailable.
+    """
 
     # Calibration type 4 - uses data_pd_agg()
 
-    data_pd_agg(date, main_path = main_path0, sub_folder = cal_path, 
+    data_pd_agg(date, main_path = main_path, sub_folder = cal_path, 
                     processed_path = processed_path, correction = correction, conv_path = conv_path, decimals = decimals,
-                    save_format=save_format, is_recursive= False, cal_option = 4)
+                    save_format=save_format, parquet_engine=parquet_engine, is_recursive= False, cal_option = 4)
 
 def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']), sub_folder1 = "", sub_folder2 = "",
                     processed_path = "Processed/DF/", correction = np.around(1.0e3/8192,4), conv_path = "Converted/",
-                     decimals = 4, cal_rep = 1, save_format="parquet", cal_option = 0):
+                     decimals = 4, save_format="parquet", parquet_engine= 'pyarrow', cal_option = 0):
     """Generate Pandas DataFrame "scan data set" files from PScope .adc files, in both digital scale and, optionally, voltages.
 
     This version includes values for magnitude and phase of the recorded means.
@@ -1551,8 +1714,6 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
         sub-folder for JSON files of converted data (if correction != 1), by default "Converted/"
     decimals : int, optional
         number of decimals cases for np.arounding values, in particular after conversion, by default 2
-    cal_rep : int, optional
-        number for the appropriate calibration file repetition (attRF and attLO configuration should match measurements), by default 1.
     save_format: str
         target file format (either "parquet" or "csv"), by default "parquet"
     cal_option: int, optional
@@ -1604,11 +1765,11 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
         # Uses calibration type 2 data for offset removal (in digital scale). Currently assumes Rep 1 for calibration.
 
         if cal_option == 0:
-            cal_mean_2 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_type = 2, rep = cal_rep)
-            cal_mean_3 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_type = 3, rep = cal_rep)
+            cal_mean_2 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_type = 2)
+            cal_mean_3 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_type = 3)
         else:
-            cal_mean_2 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_path = "Means Agg/", cal_type = 2, rep = cal_rep)
-            cal_mean_3 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_path = "Means Agg/", cal_type = 3, rep = cal_rep)
+            cal_mean_2 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_path = "Means Agg/", cal_type = 2)
+            cal_mean_3 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_path = "Means Agg/", cal_type = 3)
 
         data = np.empty((0,2))
         time = np.empty((0,1))
@@ -1714,7 +1875,10 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
 
 
                         if save_format.casefold() == "parquet":
-                            df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine='fastparquet', object_encoding='utf8')
+                            if parquet_engine == 'pyarrow':
+                                df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine=parquet_engine, index= False)
+                            else:
+                                df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine=parquet_engine, object_encoding='utf8', write_index= False)
                         else:
                             df.to_csv(base_path + date_path.replace( "/"," ") + file_title + ".csv")
                         tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
@@ -1732,7 +1896,10 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
                             df["cal_type"] = cal_option
 
                         if save_format.casefold() == "parquet":
-                            df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine='fastparquet', object_encoding='utf8')
+                            if parquet_engine == 'pyarrow':
+                                df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine=parquet_engine, index= False)
+                            else:
+                                df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine=parquet_engine, object_encoding='utf8', write_index= False)
                         else:
                             df.to_csv(base_path + date_path.replace( "/"," ") + file_title + ".csv")
                         tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
@@ -1840,7 +2007,10 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
                         df["cal_type"] = cal_option
 
                     if save_format == "parquet":
-                        df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine='fastparquet', object_encoding='utf8')
+                        if parquet_engine == 'pyarrow':
+                            df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine=parquet_engine, index= False)
+                        else:
+                            df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine=parquet_engine, object_encoding='utf8', write_index= False)
                     else:
                         df.to_csv(base_path + date_path.replace( "/"," ") + file_title + ".csv")
                     tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
@@ -1858,7 +2028,10 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
                         df["cal_type"] = cal_option
 
                     if save_format.casefold() == "parquet":
-                        df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine='fastparquet', object_encoding='utf8')
+                        if parquet_engine == 'pyarrow':
+                            df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine=parquet_engine, index= False)
+                        else:
+                            df.to_parquet(base_path + date_path.replace( "/"," ") + file_title + ".parquet", engine=parquet_engine, object_encoding='utf8', write_index= False)
                     else:
                         df.to_csv(base_path + date_path.replace( "/"," ") + file_title + ".csv")
                     tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
@@ -1869,7 +2042,7 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
 
 def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']), sub_folder = "", 
                     processed_path = "Processed/DF/", correction = np.around(1.0e3/8192,4), conv_path = "Conv/", decimals = 4,
-                    save_format="parquet", is_recursive= False, cal_option = 0):
+                    save_format="parquet", parquet_engine= 'pyarrow', is_recursive= False, cal_option = 0):
     """Generates aggregated Pandas DataFrame "phantom data set files".
 
     First, sweeps trough main_path + date_path folders and lists all .adc files found.
@@ -1926,9 +2099,10 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
         out_path3 = "".join((main_path,d,"/",processed_path,"Means Agg/{0} Phantom Set Means Agg.parquet".format(d)))
 
         if cal_option == 0:
-            ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns)
+            ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns, parquet_engine=parquet_engine)
         else:
-            ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns.append("cal_type"), check_key="cal_type", check_value= cal_option)
+            ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns + ["cal_type"], check_key="cal_type", check_value= cal_option,
+                                    parquet_engine=parquet_engine)
 
         df_list1 = []
         df_list2 = []
@@ -1942,7 +2116,7 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
                 ddf = ddf.drop("cal_type", axis=1)
 
             ddf = ddf.apply(lambda x: uncategorize(x), axis=1, meta=ddf)
-            print(ddf.dtypes)
+            print(ddf.columns)
             ddf1 = ddf.drop("digital_unit", axis=1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq"], observed=True).agg(['mean', 'std'])
 
             df1 = ddf1.compute()
@@ -2006,25 +2180,24 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
 
         if not os.path.exists(os.path.dirname(out_path1)):
             os.makedirs(os.path.dirname(out_path1))
-        dfw.reset_index().to_parquet(out_path1, engine='fastparquet')
-        print("\nSaved file: ",out_path1,"        ")
+        dfw.reset_index().to_parquet(out_path1, engine=parquet_engine)
+        tqdm.write(f"\nSaved file: {out_path1}        ")
 
         dfw = pd.concat(df_list2)
         convert2category(dfw, cols = ["phantom", "angle", "plug", "date", "rep", "pair", "Tx", "Rx", "freq", "digital_unit", "voltage_unit"])
 
         if not os.path.exists(os.path.dirname(out_path2)):
             os.makedirs(os.path.dirname(out_path2))
-        dfw.reset_index().to_parquet(out_path2, engine='fastparquet')
-        print("\nSaved file: ",out_path2,"        ")
+        dfw.reset_index().to_parquet(out_path2, engine=parquet_engine)
+        tqdm.write(f"\nSaved file: {out_path2}        ")
 
         dfw = pd.concat(df_list3)
         convert2category(dfw, cols = ["phantom", "angle", "plug", "date", "pair", "Tx", "Rx", "freq", "digital_unit", "voltage_unit"])
 
         if not os.path.exists(os.path.dirname(out_path3)):
             os.makedirs(os.path.dirname(out_path3))
-        dfw.reset_index().to_parquet(out_path3, engine='fastparquet')
-        print("\nSaved file: ",out_path3,"        ")
-
+        dfw.reset_index().to_parquet(out_path3, engine=parquet_engine)
+        tqdm.write(f"\nSaved file: {out_path3}        ")
 
 def df_convert_values(df, correction = np.around(1.0e3/8192,4)):
     """Generates converted columns from digital values on Pandas DataFrame "phantom data set files".
@@ -2061,7 +2234,7 @@ def df_convert_values(df, correction = np.around(1.0e3/8192,4)):
 
 
 def calibration_mean_dataframe(date, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']),
-                     cal_path = "Calibration/Means Agg/", processed_path = "Processed/DF/", sub_folder="", cal_type = 2, rep = 1, ite = 1):
+                     cal_path = "Calibration/Means Agg/", processed_path = "Processed/DF/", cal_type = 2, parquet_engine= 'pyarrow'):
     """Return array with mean_ch1 and mean_ch2 of a calibration file (in digital scale).
 
     Parameters
@@ -2072,10 +2245,6 @@ def calibration_mean_dataframe(date, main_path = "{}/OneDrive - McGill Universit
         main path to files, by default "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE'])
     cal_type : int, optional
         cslibration type, by default 2
-    rep : int, optional
-        re-position number, by default 1
-    ite : int, optional
-        iteration number, by default 1
 
     Returns
     -------
@@ -2085,7 +2254,7 @@ def calibration_mean_dataframe(date, main_path = "{}/OneDrive - McGill Universit
     date_path = _date2path(date)
 
     if cal_type not in (1,2,3):
-        print("Error! Invalid Calibration Type: ", str(cal_type))
+        tqdm.write(f"Error! Invalid Calibration Type: {cal_type}")
         return
 
     if cal_type == 1:
@@ -2100,18 +2269,18 @@ def calibration_mean_dataframe(date, main_path = "{}/OneDrive - McGill Universit
 
     if os.path.exists(cal_path):
 
-        df = pd.read_parquet(cal_path, columns=columns)
+        df = pd.read_parquet(cal_path, columns=columns, engine=parquet_engine)
         data_mean = df
     else:
 
         df_list = df_sweep(path_list = path_list, is_recursive = False, file_format="parquet")
 
-        df = [pd.read_parquet(c_path, columns=columns) for c_path in df_list]
+        df = [pd.read_parquet(c_path, columns=columns, engine=parquet_engine) for c_path in df_list]
 
         df = pd.concat(df, axis=0)
 
         if cal_type == 3:
-            data_mean = df["cal_type" == cal_type].groupby(by=columns[1:-2], observed=True).mean().round({"digital_ch1": 0, "digital_ch2": 0, "c_digital_ch1": 0, "c_digital_ch2": 0})
+            data_mean = df["cal_type" == cal_type, ].groupby(by=columns[1:-2], observed=True).mean().round({"digital_ch1": 0, "digital_ch2": 0, "c_digital_ch1": 0, "c_digital_ch2": 0})
         else:
             data_mean = df["cal_type" == cal_type].groupby(by=columns[1:-2], observed=True).mean().round({"digital_ch1": 0, "digital_ch2": 0})
         data_mean.reset_index(inplace=True)
@@ -2121,7 +2290,7 @@ def calibration_mean_dataframe(date, main_path = "{}/OneDrive - McGill Universit
     return data_mean
 
 def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']),  processed_path = "Processed/DF/",
-                        sub_folder = "Means/", correction = np.around(1.0e3/8192,4), decimals = 4, file_format="parquet", is_recursive= False, center = 'mean'):
+                        sub_folder = "Means/", correction = np.around(1.0e3/8192,4), decimals = 4, file_format="parquet", parquet_engine= 'pyarrow', is_recursive= False, center = 'mean'):
     """Perform Average Trace Subtraction on Pandas DataFrame "phantom data set files".
 
     Uses a simple clutter rejection technique in the form of a spatial filter.
@@ -2232,8 +2401,8 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
 
         if not os.path.exists(os.path.dirname(out_path)):
             os.makedirs(os.path.dirname(out_path))
-        dfw.reset_index().to_parquet(out_path, engine='fastparquet')
-        print("\nSaved file: ",out_path,"        ")
+        dfw.reset_index().to_parquet(out_path, engine=parquet_engine)
+        tqdm.write(f"\nSaved file: {out_path}        ")
 
 def avg_trace_clutter(df, progress_bar = True, center='mean'):
     """Calculate average trace cluttter per distance between antennas and per frequency.
@@ -2318,9 +2487,9 @@ def convert2category(df, cols = ["date", "rep", "iter"], natsort=True):
             else:
                 df[c] = pd.Categorical(df[c])
         except KeyError:
-            print(f"{c} is not a column in the dataframe.")
+            tqdm.write(f"{c} is not a column in the dataframe.")
 
-def dd_collect_formatted(path_list, dftype = 0, is_recursive = False, file_format="parquet", columns=None, check_key=None, check_value=None):
+def dd_collect_formatted(path_list, dftype = 0, is_recursive = False, file_format="parquet", parquet_engine= 'pyarrow', columns=None, check_key=None, check_value=None):
     """Collect all Dask DataFrame files in given directory path list.
 
     This function explicitly reads columns in previously determined dtypes. Returns a list with the DataFrame files found.
@@ -2384,12 +2553,12 @@ def dd_collect_formatted(path_list, dftype = 0, is_recursive = False, file_forma
     df_list = []
     if file_format.casefold() == "parquet":
         for p in df_paths:
-            df_list.append(dd.read_parquet(p, engine='fastparquet', columns=columns, dtypes=dtypes))
-            print("\rOpened file: ",p, "        ", end="\r")
+            df_list.append(dd.read_parquet(p, engine=parquet_engine, columns=columns, dtypes=dtypes))
+            tqdm.write(f"\rOpened file: {p}        ", end="\r")
     elif file_format.casefold() == "csv":
         for p in df_paths:
             df_list.append(dd.read_csv(p, cols = columns, dtypes=dtypes, low_memory=False))
-            print("\rOpened file: ",p, "        ", end="\r")
+            tqdm.write(f"\rOpened file: {p}        ", end="\r")
 
     if check_key is not None:
         df_list = [df for df in df_list if df.compute()[check_key].eq(check_value).all()]
