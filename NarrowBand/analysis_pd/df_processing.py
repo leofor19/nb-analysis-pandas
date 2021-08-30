@@ -1,8 +1,8 @@
 # Python 3.8
 # 2021-03-05
 
-# Version 1.2.3
-# Latest update 2021-08-20
+# Version 1.2.4
+# Latest update 2021-08-30
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -42,7 +42,8 @@ from dask.diagnostics import ProgressBar
 from natsort import natsorted
 import numpy as np
 import pandas as pd
-from tqdm.auto import tqdm
+# from tqdm import tqdm
+from tqdm.notebook import tqdm
 #from tqdm.dask import TqdmCallback
 from yaspin import yaspin
 
@@ -260,7 +261,7 @@ def dB2Volts(gain_dB):
 
     return 10.0**(gain_dB/20.0)
 
-def calculate_power_dBm(df, Z = 50.0, noise_floor = -108):
+def calculate_power_dBm(df, Z = 50.0, noise_floor = -108, inplace=False):
     """Calculates power in dBm and outputs to df["power_dBm"].
 
     Compensates for mV if that is the only "voltage_unit" found.
@@ -275,13 +276,23 @@ def calculate_power_dBm(df, Z = 50.0, noise_floor = -108):
         impedance in ohms, by default 50.0 ohms
     noise_floor: float (optional)
         estimated noise floor in dBm to replace 0 magnitude values, by default 0.1252
+    inplace: bool (optional)
+        if True, perform operation in-place, by default False.
+
+    Returns
+    ----------
+    DataFrame or None
+        DataFrame with 'power_dBm' and 'power' columns or None if inplace=True.
     """
 
-    calculate_power(df, Z = Z)
+    df = calculate_power(df, Z = Z, inplace=False)
 
-    df["power_dBm"] = power2dBm(df["power"], noise_floor = noise_floor)
+    df.loc[:, "power_dBm"] = power2dBm(df["power"].copy(deep=True), noise_floor = noise_floor)
 
-def calculate_power(df, Z = 50.0):
+    if not inplace:
+        return df
+
+def calculate_power(df, Z = 50.0, inplace=False):
     """Calculates power in Watts and outputs to df["power"].
 
     Compensates for mV if that is the only "voltage_unit" found.
@@ -294,18 +305,25 @@ def calculate_power(df, Z = 50.0):
         dataframe with I and Q voltage channels
     Z: int or float (optional)
         impedance in ohms, by default 50.0 ohms
+    inplace: bool (optional)
+        if True, perform operation in-place, by default False.
+
+    Returns
+    ----------
+    DataFrame or None
+        DataFrame with 'power' column or None if inplace=True.
     """
 
     q = df.voltage_ch1
     i = df.voltage_ch2
 
     if df.voltage_unit.unique() == 'mV' or 'converted by factor 0.1221':
-
-        df["power"] = ((q * 1e-3)**2 + (i  * 1e-3)**2) / Z
-
+        df.loc[:, "power"] = ((q * 1e-3)**2 + (i  * 1e-3)**2) / Z
     else:
+        df.loc[:, "power"] = (q**2 + i**2) / Z
 
-        df["power"] = (q**2 + i**2) / Z
+    if not inplace:
+        return df
 
 def power2dBm(power_W, noise_floor = -108):
     """Convert power in W to dBm.
@@ -316,19 +334,27 @@ def power2dBm(power_W, noise_floor = -108):
 
     Parameters
     ----------
-    power_W : int or float
+    power_W : Pandas DataFrame-like or int or float
         power in W
     noise_floor: float (optional)
-        estimated noise floor in dBm to replace 0 magnitude values, by default 0.1252
+        estimated noise floor in dBm to replace 0 magnitude values, by default 0.1252 (mV) = -108 (dBm)
 
     Returns
     ----------
     dBm
         power in dBm
     """
-    power_W[power_W == 0] = noise_floor
 
-    return 10.0 * np.log10(power_W, where= power_W > 0) + 30
+    power_dBm = 10.0 * np.log10(power_W, where= power_W > 0) + 30
+
+    if ((isinstance(power_dBm, pd.DataFrame)) or (isinstance(power_dBm, pd.Series))) and (noise_floor != 0):
+        power_dBm.loc[power_W == 0] = noise_floor
+    elif isinstance(power_dBm, np.ndarray) and (noise_floor != 0):
+        power_dBm[power_W == 0] = noise_floor
+    elif (power_W == 0) and (noise_floor != 0):
+        power_dBm = noise_floor
+
+    return power_dBm
 
 def milivolts2dBm(milivolts, Z = 50.0, noise_floor = 0.1252):
     """Convert mV to dBm.
@@ -354,7 +380,8 @@ def milivolts2dBm(milivolts, Z = 50.0, noise_floor = 0.1252):
 
     arg = (( (milivolts* 1e-3)**2 ) * 1000) / Z
 
-    arg[arg == 0] = noise_floor * 1e-3
+    if noise_floor != 0:
+        arg[arg == 0] = noise_floor * 1e-3
 
     return 10.0 * np.log10(arg, where= arg > 0)
 
@@ -382,7 +409,8 @@ def volts2dBm(volts, Z = 50.0, noise_floor = 0.1252):
 
     arg = (( (volts)**2 ) * 1000) / Z
 
-    arg[arg == 0] = noise_floor * 1e-3
+    if noise_floor != 0:
+        arg[arg == 0] = noise_floor * 1e-3
 
     return 10.0 * np.log10(arg, where= arg > 0)
 
@@ -1291,9 +1319,11 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
     if isinstance(date, list):
         out_path1= "{0}/OneDrive - McGill University/Narrow Band Data1/Analysis/{1}/DF/Calibration/Means/Calibration Processed Means Type NUM.parquet".format(os.environ['USERPROFILE'], datetime.now().strftime("%Y_%m_%d"))
         out_path2= "{0}/OneDrive - McGill University/Narrow Band Data1/Analysis/{1}/DF/Calibration/Means Agg/Calibration Processed Agg Means Type NUM.parquet".format(os.environ['USERPROFILE'], datetime.now().strftime("%Y_%m_%d"))
+        out_path3= "{0}/OneDrive - McGill University/Narrow Band Data1/Analysis/{1}/DF/Calibration/Means Agg by Rep/Calibration Processed Agg Means by Rep Type NUM.parquet".format(os.environ['USERPROFILE'], datetime.now().strftime("%Y_%m_%d"))
     else:
         out_path1= "".join((main_path,date,"/",processed_path,cal_path,"Means/{} Calibration Processed Means Type NUM.parquet".format(date)))
         out_path2= "".join((main_path,date,"/",processed_path,cal_path,"Means Agg/{} Calibration Processed Agg Means Type NUM.parquet".format(date)))
+        out_path3= "".join((main_path,date,"/",processed_path,cal_path,"Means Agg by Rep/{} Calibration Processed Agg Means by Rep Type NUM.parquet".format(date)))
 
     main_path = "".join((main_path,date,"/",processed_path,cal_path,"Comp/",date," Compiled Calibration Type NUM.parquet"))
 
@@ -1303,9 +1333,9 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
                     "voltage_ch1": "Float64", "voltage_ch2": "Float64", "voltage_mag": "Float64" , "voltage_phase": "Float64"
                     })
     df = df.compute()
-    df1 = df.groupby(["date", "attLO", "attRF", "samp_rate", "nsamples","cal_type", "digital_unit", "voltage_unit", "obs", "rep", "freq"], observed=True).agg(digital_ch1 = ("raw_digital_ch1", "mean"),
+    df1 = df.groupby(["date", "attLO", "attRF", "samp_rate", "nsamples","cal_type", "digital_unit", "voltage_unit", "obs", "rep", "iter", "freq"], observed=True).agg(digital_ch1 = ("raw_digital_ch1", "mean"),
                     digital_ch2 = ("raw_digital_ch2","mean"), std_digital_ch1 =("raw_digital_ch1", "std"), std_digital_ch2 = ("raw_digital_ch2", "std"))
-    df1 = df1.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
+    df1 = df1.reset_index().sort_values(by=["date", "rep", "iter", "freq"], ignore_index=True)
 
     df1 = df1.round({"digital_ch1": 0, "digital_ch2": 0})
     df1["voltage_ch1"] = correction*df1["digital_ch1"]
@@ -1313,7 +1343,7 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
     df1["voltage_mag"] = np.sqrt(np.square(df1["voltage_ch1"]) + np.square(df1["voltage_ch2"]))
     df1["voltage_phase"] = np.arctan2(df1["voltage_ch1"], df1["voltage_ch2"])
 
-    convert2category(df1, cols = ["date", "rep", "cal_type", "digital_unit", "voltage_unit", "attLO", "attRF", "freq", "samp_rate", "nsamples", "obs"])
+    convert2category(df1, cols = ["date", "rep", "iter", "cal_type", "digital_unit", "voltage_unit", "attLO", "attRF", "freq", "samp_rate", "nsamples", "obs"])
 
     if not os.path.exists(os.path.dirname(out_path1)):
         os.makedirs(os.path.dirname(out_path1))
@@ -1343,6 +1373,23 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
         df1.to_parquet(out_path2.replace("NUM","1"), engine=parquet_engine, object_encoding='utf8', write_index= False)
     tqdm.write(f'\nSaved file: {out_path2.replace("NUM","1")}        ')
 
+    df1 = df.groupby(["date", "attLO", "attRF", "samp_rate", "nsamples","cal_type", "digital_unit", "voltage_unit", "obs", "rep", "freq"], observed=True).agg(digital_ch1 = ("raw_digital_ch1", "mean"),
+                    digital_ch2 = ("raw_digital_ch2","mean"), std_digital_ch1 =("raw_digital_ch1", "std"), std_digital_ch2 = ("raw_digital_ch2", "std"))
+    df1 = df1.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
+
+    df1 = df1.round({"digital_ch1": 0, "digital_ch2": 0})
+    df1["voltage_ch1"] = correction*df1["digital_ch1"]
+    df1["voltage_ch2"] = correction*df1["digital_ch2"]
+    df1["voltage_mag"] = np.sqrt(np.square(df1["voltage_ch1"]) + np.square(df1["voltage_ch2"]))
+    df1["voltage_phase"] = np.arctan2(df1["voltage_ch1"], df1["voltage_ch2"])
+
+    convert2category(df1, cols = ["date", "rep", "cal_type", "digital_unit", "voltage_unit", "attLO", "attRF", "freq", "samp_rate", "nsamples", "obs"])
+
+    if not os.path.exists(os.path.dirname(out_path3)):
+        os.makedirs(os.path.dirname(out_path3))
+    df1.to_parquet(out_path3.replace("NUM","1"), engine='fastparquet', object_encoding='utf8')
+    print("\nSaved file: ",out_path3.replace("NUM","1"),"        ")
+
     df["subject"] = df["date"].astype(str) + " Rep " + df["rep"].astype(str) + " Iter " + df["iter"].astype(str)
 
     df = dd.read_parquet(main_path.replace("NUM","2"), engine=parquet_engine, dtypes={
@@ -1352,9 +1399,9 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
                         })
     df = df.compute()
 
-    df21 = df.groupby(["date", "attLO", "attRF", "samp_rate", "nsamples","cal_type", "digital_unit", "voltage_unit", "obs", "rep", "freq"], observed=True).agg(digital_ch1 = ("raw_digital_ch1", "mean"),
+    df21 = df.groupby(["date", "attLO", "attRF", "samp_rate", "nsamples","cal_type", "digital_unit", "voltage_unit", "obs", "rep", "iter", "freq"], observed=True).agg(digital_ch1 = ("raw_digital_ch1", "mean"),
                         digital_ch2 = ("raw_digital_ch2","mean"), std_digital_ch1 =("raw_digital_ch1", "std"), std_digital_ch2 = ("raw_digital_ch2", "std"))
-    df21 = df21.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
+    df21 = df21.reset_index().sort_values(by=["date", "rep", "iter", "freq"], ignore_index=True)
 
     df21 = df21.round({"digital_ch1": 0, "digital_ch2": 0})
     df21["voltage_ch1"] = correction*df21["digital_ch1"]
@@ -1362,7 +1409,7 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
     df21["voltage_mag"] = np.sqrt(np.square(df21["voltage_ch1"]) + np.square(df21["voltage_ch2"]))
     df21["voltage_phase"] = np.arctan2(df21["voltage_ch1"], df21["voltage_ch2"])
 
-    convert2category(df21, cols = ["date", "rep", "cal_type", "freq", "digital_unit", "voltage_unit", "attRF", "freq", "samp_rate", "nsamples", "obs"])
+    convert2category(df21, cols = ["date", "rep", "iter", "cal_type", "freq", "digital_unit", "voltage_unit", "attRF", "freq", "samp_rate", "nsamples", "obs"])
 
     if not os.path.exists(os.path.dirname(out_path1)):
         os.makedirs(os.path.dirname(out_path1))
@@ -1392,12 +1439,69 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
         df22.to_parquet(out_path2.replace("NUM","2"), engine=parquet_engine, object_encoding='utf8', write_index= False)
     tqdm.write(f'\nSaved file: {out_path2.replace("NUM","2")}        ')
 
+    df23 = df.groupby(["date", "attLO", "attRF", "samp_rate", "nsamples","cal_type", "digital_unit", "voltage_unit", "obs", "rep", "freq"], observed=True).agg(digital_ch1 = ("raw_digital_ch1", "mean"),
+                        digital_ch2 = ("raw_digital_ch2","mean"), std_digital_ch1 =("raw_digital_ch1", "std"), std_digital_ch2 = ("raw_digital_ch2", "std"))
+    df23 = df23.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
+
+    df23 = df23.round({"digital_ch1": 0, "digital_ch2": 0})
+    df23["voltage_ch1"] = correction*df23["digital_ch1"]
+    df23["voltage_ch2"] = correction*df23["digital_ch2"]
+    df23["voltage_mag"] = np.sqrt(np.square(df23["voltage_ch1"]) + np.square(df23["voltage_ch2"]))
+    df23["voltage_phase"] = np.arctan2(df23["voltage_ch1"], df23["voltage_ch2"])
+
+    convert2category(df23, cols = ["date", "rep", "cal_type", "freq", "digital_unit", "voltage_unit", "attRF", "freq", "samp_rate", "nsamples", "obs"])
+
+    if not os.path.exists(os.path.dirname(out_path3)):
+        os.makedirs(os.path.dirname(out_path3))
+    df23.to_parquet(out_path3.replace("NUM","2"), engine='fastparquet', object_encoding='utf8')
+    print("\nSaved file: ",out_path3.replace("NUM","2"),"        ")
+
     df = dd.read_parquet(main_path.replace("NUM","3"), engine=parquet_engine, dtypes={
                         "voltage_unit": "category", "digital_unit": "category", "obs": "category", "samp_rate": "category", "nsamples": "category", "iter": "category", "rep": "category", "date": "category",
                         "cal_type": "category", "attRF": "int32", "attLO": "int32", "raw_digital_ch1": "int64", "raw_digital_ch2": "int64", "time": "Float64", "freq": "category",
                         "voltage_ch1": "Float64", "voltage_ch2": "Float64", "voltage_mag": "Float64" , "voltage_phase": "Float64"
                         })
     df = df.compute().reset_index(drop=True)
+
+    df3 = df.groupby(["date", "attLO", "attRF", "samp_rate", "nsamples","cal_type", "digital_unit", "voltage_unit", "obs", "rep", "iter", "freq"], observed=True).agg(digital_ch1 = ("raw_digital_ch1", "mean"), 
+                    digital_ch2 = ("raw_digital_ch2","mean"), std_digital_ch1 =("raw_digital_ch1", "std"), std_digital_ch2 = ("raw_digital_ch2", "std"))
+    df3 = df3.reset_index().sort_values(by=["date", "rep", "iter", "freq"], ignore_index=True)
+
+    df3["attLO"] = pd.to_numeric(df3["attLO"])
+    df3["attRF"] = pd.to_numeric(df3["attRF"])
+
+    df21 = df21.set_index(["date","attLO", "nsamples", "rep", "iter", "freq"])
+    df3 = df3.set_index(["date","attLO", "nsamples", "rep", "iter", "freq"])
+
+    df3["c_digital_ch1"] = df3["digital_ch1"] - df21["digital_ch1"]
+    df3["c_digital_ch2"] = df3["digital_ch2"] - df21["digital_ch2"]
+
+    df3 = df3.reset_index().sort_values(by=["date", "rep", "iter", "freq"], ignore_index=True)
+    df21 = df21.reset_index().sort_values(by=["date", "rep", "iter", "freq"], ignore_index=True)
+
+    for d in df3.date.drop_duplicates().tolist():
+        if df3.loc[df3.date.eq(d), "rep"].astype(int).max() > df21.loc[df21.date.eq(d), "rep"].astype(int).max():
+            extra_rep = df3.loc[df3.date.eq(d), "rep"].astype(int).max()
+            df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "c_digital_ch1"] = df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "digital_ch1"] - df21.loc[df3.date.eq(d) & df21.rep.eq(extra_rep - 1), "digital_ch1"].values
+            df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "c_digital_ch2"] = df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "digital_ch2"] - df21.loc[df3.date.eq(d) & df21.rep.eq(extra_rep - 1), "digital_ch2"].values
+
+    df3 = df3.round({"digital_ch1": 0, "digital_ch2": 0, "c_digital_ch1": 0, "c_digital_ch2": 0})
+    df3["voltage_ch1"] = correction*df3["c_digital_ch1"]
+    df3["voltage_ch2"] = correction*df3["c_digital_ch2"]
+    df3["voltage_mag"] = np.sqrt(np.square(df3["voltage_ch1"]) + np.square(df3["voltage_ch2"]))
+    df3["voltage_phase"] = np.arctan2(df3["voltage_ch1"], df3["voltage_ch2"])
+    df3 = df3.reset_index().sort_values(by=["date", "rep", "iter", "freq"], ignore_index=True)
+    df21 = df21.reset_index().sort_values(by=["date", "rep", "iter", "freq"], ignore_index=True)
+
+    convert2category(df3, cols = ["date", "rep", "cal_type", "freq", "digital_unit", "voltage_unit", "freq", "samp_rate", "nsamples", "obs"])
+
+    if not os.path.exists(os.path.dirname(out_path1)):
+        os.makedirs(os.path.dirname(out_path1))
+    if parquet_engine == 'pyarrow':
+        df3.to_parquet(out_path1.replace("NUM","3"), engine=parquet_engine, index= False)
+    else:
+        df3.to_parquet(out_path1.replace("NUM","3"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path1.replace("NUM","3")}        ')
 
     df3 = df.groupby(["date", "attLO", "attRF", "samp_rate", "nsamples","cal_type", "digital_unit", "voltage_unit", "obs", "rep", "freq"], observed=True).agg(digital_ch1 = ("raw_digital_ch1", "mean"), 
                     digital_ch2 = ("raw_digital_ch2","mean"), std_digital_ch1 =("raw_digital_ch1", "std"), std_digital_ch2 = ("raw_digital_ch2", "std"))
@@ -1413,13 +1517,13 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
     df3["c_digital_ch2"] = df3["digital_ch2"] - df21["digital_ch2"]
 
     df3 = df3.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
-    df21 = df21.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
+    df23 = df23.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
 
     for d in df3.date.drop_duplicates().tolist():
         if df3.loc[df3.date.eq(d), "rep"].astype(int).max() > df21.loc[df21.date.eq(d), "rep"].astype(int).max():
             extra_rep = df3.loc[df3.date.eq(d), "rep"].astype(int).max()
-            df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "c_digital_ch1"] = df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "digital_ch1"] - df21.loc[df3.date.eq(d) & df21.rep.eq(extra_rep - 1), "digital_ch1"].values
-            df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "c_digital_ch2"] = df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "digital_ch2"] - df21.loc[df3.date.eq(d) & df21.rep.eq(extra_rep - 1), "digital_ch2"].values
+            df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "c_digital_ch1"] = df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "digital_ch1"] - df23.loc[df3.date.eq(d) & df23.rep.eq(extra_rep - 1), "digital_ch1"].values
+            df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "c_digital_ch2"] = df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "digital_ch2"] - df23.loc[df3.date.eq(d) & df23.rep.eq(extra_rep - 1), "digital_ch2"].values
 
     df3 = df3.round({"digital_ch1": 0, "digital_ch2": 0, "c_digital_ch1": 0, "c_digital_ch2": 0})
     df3["voltage_ch1"] = correction*df3["c_digital_ch1"]
@@ -1427,7 +1531,7 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
     df3["voltage_mag"] = np.sqrt(np.square(df3["voltage_ch1"]) + np.square(df3["voltage_ch2"]))
     df3["voltage_phase"] = np.arctan2(df3["voltage_ch1"], df3["voltage_ch2"])
     df3 = df3.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
-    df21 = df21.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
+    df23 = df23.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
 
     convert2category(df3, cols = ["date", "rep", "cal_type", "freq", "digital_unit", "voltage_unit", "freq", "samp_rate", "nsamples", "obs"])
 
@@ -2109,9 +2213,14 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
 
         main_paths = ["".join((main_path,d,"/",processed_path, sub_folder1, conv_path))]
 
-        out_path1 = "".join((main_path,d,"/",processed_path, sub_folder1, "Means/{0} Phantom Set Means.parquet".format(d)))
-        out_path2 = "".join((main_path,d,"/",processed_path, sub_folder1, "Means Agg by Rep/{0} Phantom Set Agg Means by Rep.parquet".format(d)))
-        out_path3 = "".join((main_path,d,"/",processed_path, sub_folder1, "Means Agg/{0} Phantom Set Means Agg.parquet".format(d)))
+        if  cal_option == 0:
+            out_path1 = "".join((main_path,d,"/",processed_path, sub_folder1, "Means/{0} Phantom Set Means.parquet".format(d)))
+            out_path2 = "".join((main_path,d,"/",processed_path, sub_folder1, "Means Agg by Rep/{0} Phantom Set Agg Means by Rep.parquet".format(d)))
+            out_path3 = "".join((main_path,d,"/",processed_path, sub_folder1, "Means Agg/{0} Phantom Set Means Agg.parquet".format(d)))
+        else:
+            out_path1 = "".join((main_path,d,"/",processed_path,"Means/{0} Calibration Type {1} Phantom Set Means.parquet".format(d,cal_option)))
+            out_path2 = "".join((main_path,d,"/",processed_path,"Means Agg by Rep/{0} Calibration Type {1} Phantom Set Agg Means by Rep.parquet".format(d,cal_option)))
+            out_path3 = "".join((main_path,d,"/",processed_path,"Means Agg/{0} Calibration Type {1} Phantom Set Means Agg.parquet".format(d,cal_option)))
 
         if cal_option == 0:
             ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns, parquet_engine=parquet_engine)
@@ -2952,7 +3061,7 @@ def collect_json_data_simple(main_path = "{}/OneDrive - McGill University/Docume
 def revert_gains_Rx(df, gaindB = -18.2):
     """Revert gains of voltage columns to values at Rx input.
 
-    Default gaindB is -18.2 dB (entire Rx chain reverted) plus the attenuators used.
+    Default gaindB is -18.2 dB (entire Rx chain reverted) plus the nominal attenuators used.
 
     Converts the columns 'voltage_ch1', 'voltage_ch2', 'voltage_mag',
             'raw_voltage_ch1', 'raw_voltage_ch2', 'raw_voltage_mag',
@@ -2976,13 +3085,13 @@ def revert_gains_Rx(df, gaindB = -18.2):
             'n_voltage_ch1', 'n_voltage_ch2', 'n_voltage_mag']
 
     for col in v_cols:
-        df[col] = round( (10**(df["gaindB"]/20)) * df[col], 4)
+        df.loc[:, col] = (10**(df["gaindB"]/20)) * df[col]
 
     w_cols = ['power']
 
     for col in w_cols:
         if col in df.columns:
-            df.loc[:, col] = round( (10 ** (df["gaindB"] / 10)) * df[col] * 0.001,4)
+            df.loc[:, col] = (10 ** (df["gaindB"] / 10)) * df[col] * 0.001
 
     dB_cols = ['power_dBm']
 
@@ -3013,13 +3122,13 @@ def revert_gains_Tx(df, gaindB = -14):
     v_cols = ['voltage_ch1', 'voltage_ch2', 'voltage_mag']
 
     for col in v_cols:
-        df.loc[:, col] = round( (10 ** (df["gaindB"] / 20)) * df[col] * 0.001,4)
+        df.loc[:, col] = (10 ** (df["gaindB"] / 20)) * df[col] * 0.001
 
     w_cols = ['power']
 
     for col in w_cols:
         if col in df.columns:
-            df.loc[:, col] = round( (10 ** (df["gaindB"] / 10)) * df[col] * 0.001,4)
+            df.loc[:, col] = (10 ** (df["gaindB"] / 10)) * df[col] * 0.001
 
     dB_cols = ['power_dBm']
 
