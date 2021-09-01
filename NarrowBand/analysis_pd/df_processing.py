@@ -1493,7 +1493,7 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
     df3 = df3.reset_index().sort_values(by=["date", "rep", "iter", "freq"], ignore_index=True)
     df21 = df21.reset_index().sort_values(by=["date", "rep", "iter", "freq"], ignore_index=True)
 
-    convert2category(df3, cols = ["date", "rep", "cal_type", "freq", "digital_unit", "voltage_unit", "freq", "samp_rate", "nsamples", "obs"])
+    convert2category(df3, cols = ["date", "rep", "iter", "cal_type", "freq", "digital_unit", "voltage_unit", "freq", "samp_rate", "nsamples", "obs"])
 
     if not os.path.exists(os.path.dirname(out_path1)):
         os.makedirs(os.path.dirname(out_path1))
@@ -1510,11 +1510,11 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
     df3["attLO"] = pd.to_numeric(df3["attLO"])
     df3["attRF"] = pd.to_numeric(df3["attRF"])
 
-    df21 = df21.set_index(["date","attLO", "nsamples", "rep", "freq"])
+    df23 = df23.set_index(["date","attLO", "nsamples", "rep", "freq"])
     df3 = df3.set_index(["date","attLO", "nsamples", "rep", "freq"])
 
-    df3["c_digital_ch1"] = df3["digital_ch1"] - df21["digital_ch1"]
-    df3["c_digital_ch2"] = df3["digital_ch2"] - df21["digital_ch2"]
+    df3["c_digital_ch1"] = df3["digital_ch1"] - df23["digital_ch1"]
+    df3["c_digital_ch2"] = df3["digital_ch2"] - df23["digital_ch2"]
 
     df3 = df3.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
     df23 = df23.reset_index().sort_values(by=["date", "rep", "freq"], ignore_index=True)
@@ -1746,7 +1746,7 @@ def cal4_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
 
             # Calibration type 4 - uses case_data_read2pandas() with specific options
 
-            case_data_read2pandas(dates, main_path = main_path, sub_folder1 = "".join((cal_path, extra_type)),
+            case_data_read2pandas(date, main_path = main_path, sub_folder1 = "".join((cal_path, extra_type)),
                         processed_path = "".join((processed_path, cal_path)), correction = correction, conv_path = conv_path,
                         decimals = decimals, save_format=save_format, parquet_engine=parquet_engine, cal_option = 4)
 
@@ -1793,9 +1793,17 @@ def cal4_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Document
 
     # Calibration type 4 - uses data_pd_agg()
 
-    data_pd_agg(date, main_path = main_path, sub_folder1 = cal_path,
-                    processed_path = processed_path, correction = correction, conv_path = conv_path, decimals = decimals,
-                    save_format=save_format, parquet_engine=parquet_engine, is_recursive= False, cal_option = 4)
+    extra_type = "Type 4/"
+
+    date_path = _date2path(date)
+
+    base_path4 = "".join((main_path, date_path, cal_path, extra_type))
+    if os.path.exists(os.path.dirname(base_path4)):
+        data_pd_agg(date, main_path = main_path, sub_folder1 = cal_path,
+                        processed_path = processed_path, correction = correction, conv_path = conv_path, decimals = decimals,
+                        save_format=save_format, parquet_engine=parquet_engine, is_recursive= False, cal_option = 4)
+    else:
+        tqdm.write(f'No Calibration Type 4 files found for {date}!', end='\n')
 
 def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']), sub_folder1 = "", sub_folder2 = "",
                     processed_path = "Processed/DF/", correction = np.around(1.0e3/8192,4), conv_path = "Converted/",
@@ -2225,7 +2233,7 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
         if cal_option == 0:
             ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns, parquet_engine=parquet_engine)
         else:
-            ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns + ["cal_type"], specifier = 'Calibration Type 4',
+            ddf_list = dd_collect(main_paths, is_recursive=is_recursive, file_format=save_format, columns=columns + ["cal_type"], specifier = f'Calibration Type {cal_option}',
                                     check_key="cal_type", check_value= cal_option, parquet_engine=parquet_engine)
 
         df_list1 = []
