@@ -42,8 +42,8 @@ from dask.diagnostics import ProgressBar
 from natsort import natsorted
 import numpy as np
 import pandas as pd
-# from tqdm import tqdm
-from tqdm.notebook import tqdm
+# from tqdm import tqdm # when using terminal
+from tqdm.notebook import tqdm # when using Jupyter Notebook
 #from tqdm.dask import TqdmCallback
 from yaspin import yaspin
 
@@ -1535,13 +1535,13 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
 
     convert2category(df3, cols = ["date", "rep", "cal_type", "freq", "digital_unit", "voltage_unit", "freq", "samp_rate", "nsamples", "obs"])
 
-    if not os.path.exists(os.path.dirname(out_path1)):
-        os.makedirs(os.path.dirname(out_path1))
+    if not os.path.exists(os.path.dirname(out_path3)):
+        os.makedirs(os.path.dirname(out_path3))
     if parquet_engine == 'pyarrow':
-        df3.to_parquet(out_path1.replace("NUM","3"), engine=parquet_engine, index= False)
+        df3.to_parquet(out_path3.replace("NUM","3"), engine=parquet_engine, index= False)
     else:
-        df3.to_parquet(out_path1.replace("NUM","3"), engine=parquet_engine, object_encoding='utf8', write_index= False)
-    tqdm.write(f'\nSaved file: {out_path1.replace("NUM","3")}        ')
+        df3.to_parquet(out_path3.replace("NUM","3"), engine=parquet_engine, object_encoding='utf8', write_index= False)
+    tqdm.write(f'\nSaved file: {out_path3.replace("NUM","3")}        ')
 
     df_ref = df3.groupby(["attLO", "attRF", "freq"], observed=True).agg(digital_ch1 = ("digital_ch1", "mean"), digital_ch2 = ("digital_ch2","mean"), 
                     std_digital_ch1 = ("digital_ch1", "std"), std_digital_ch2 = ("digital_ch2", "std"), c_digital_ch1 = ("c_digital_ch1", "mean"), 
