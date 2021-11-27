@@ -1,13 +1,8 @@
 # Python 3.8
 # 2021-03-05
 
-<<<<<<< HEAD
 # Version 1.2.6
 # Latest update 2021-11-26
-=======
-# Version 1.2.5
-# Latest update 2021-09-10
->>>>>>> e253016bb9918a6dd7341daf4c199868bf7f566e
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
