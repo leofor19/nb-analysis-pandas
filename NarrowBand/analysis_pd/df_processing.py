@@ -261,7 +261,7 @@ def dB2Volts(gain_dB):
 
     return 10.0**(gain_dB/20.0)
 
-def calculate_power_dBm(df, Z = 50.0, noise_floor = -108, inplace=False):
+def calculate_power_dBm(df, Z = 50.0, noise_floor = -108, inplace=False, voltage_col = "voltage"):
     """Calculates power in dBm and outputs to df["power_dBm"].
 
     Compensates for mV if that is the only "voltage_unit" found.
@@ -278,6 +278,8 @@ def calculate_power_dBm(df, Z = 50.0, noise_floor = -108, inplace=False):
         estimated noise floor in dBm to replace 0 magnitude values, by default 0.1252
     inplace: bool (optional)
         if True, perform operation in-place, by default False.
+    voltage_col: str (optional)
+        column string base for voltage (voltage, voltage_eq, voltage_mag), by default "voltage"
 
     Returns
     ----------
@@ -285,14 +287,14 @@ def calculate_power_dBm(df, Z = 50.0, noise_floor = -108, inplace=False):
         DataFrame with 'power_dBm' and 'power' columns or None if inplace=True.
     """
 
-    df = calculate_power(df, Z = Z, inplace=False)
+    df = calculate_power(df, Z = Z, inplace=False, voltage_col = voltage_col)
 
     df.loc[:, "power_dBm"] = power2dBm(df["power"].copy(deep=True), noise_floor = noise_floor)
 
     if not inplace:
         return df
 
-def calculate_power(df, Z = 50.0, inplace=False):
+def calculate_power(df, Z = 50.0, inplace=False, voltage_col = "voltage"):
     """Calculates power in Watts and outputs to df["power"].
 
     Compensates for mV if that is the only "voltage_unit" found.
@@ -307,6 +309,8 @@ def calculate_power(df, Z = 50.0, inplace=False):
         impedance in ohms, by default 50.0 ohms
     inplace: bool (optional)
         if True, perform operation in-place, by default False.
+    voltage_col: str (optional)
+        column string base for voltage (voltage, voltage_eq, voltage_mag), by default "voltage"
 
     Returns
     ----------
@@ -314,8 +318,8 @@ def calculate_power(df, Z = 50.0, inplace=False):
         DataFrame with 'power' column or None if inplace=True.
     """
 
-    q = df.voltage_ch1
-    i = df.voltage_ch2
+    q = df["".join((voltage_col,"_ch1"))]
+    i = df["".join((voltage_col,"_ch2"))]
 
     if df.voltage_unit.unique() == 'mV' or 'converted by factor 0.1221':
         df.loc[:, "power"] = ((q * 1e-3)**2 + (i  * 1e-3)**2) / Z
