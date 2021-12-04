@@ -62,7 +62,7 @@ warnings.simplefilter("ignore", category=FutureWarning)
 #client = Client()
 
 def save_pairwise_comparisons(df, out_path = "C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/Analysis/{}/Comps/".format(datetime.now().strftime("%Y_%m_%d")), 
-                                different_attRF = True, different_attLO = False, between_phantoms = False, between_dates = True, correction = np.around(1.5e3/8192,4), save_format="parquet", ftype=1):
+                                different_attRF = True, different_attLO = False, between_phantoms = False, between_dates = True, correction = np.around(1.0e3/8192,4), save_format="parquet", ftype=1):
     """Generate dataframe files comparing pairs of phantom scans on Pandas data frames.
 
     Possible to select whether to allow comparison between different attRF, attLO, phantoms/angles or dates.
@@ -86,7 +86,7 @@ def save_pairwise_comparisons(df, out_path = "C:/Users/leofo/OneDrive - McGill U
     between_dates : bool, optional
             set to true to enable comparisons between different dates, by default True
     correction : float, optional
-        conversion scale factor for digital scale data, by default np.around(1.5e3/8192,4)
+        conversion scale factor for digital scale data, by default np.around(1.0e3/8192,4)
         default is equivalent to 0.1831 mV per ADC unit
         set to 1 for no converted files
     save_format: str
@@ -129,7 +129,7 @@ def save_pairwise_comparisons(df, out_path = "C:/Users/leofo/OneDrive - McGill U
         else:
             df.to_csv(df_file.replace("NUM", f'{i:02d}').replace("parquet","csv"))
 
-def pairwise_comparisons(df, different_attRF = True, different_attLO = False, between_phantoms = False, between_dates = True, correction = np.around(1.5e3/8192,4)):
+def pairwise_comparisons(df, different_attRF = True, different_attLO = False, between_phantoms = False, between_dates = True, correction = np.around(1.0e3/8192,4)):
     """Compare pairs of phantom scans on Pandas data frames.
 
     Possible to select whether to allow comparison between different attRF, attLO, phantoms/angles or dates.
@@ -149,7 +149,7 @@ def pairwise_comparisons(df, different_attRF = True, different_attLO = False, be
     between_dates : bool, optional
             set to true to enable comparisons between different dates, by default True
     correction : float, optional
-        conversion scale factor for digital scale data, by default np.around(1.5e3/8192,4)
+        conversion scale factor for digital scale data, by default np.around(1.0e3/8192,4)
         default is equivalent to 0.1831 mV per ADC unit
         set to 1 for no converted files
 
@@ -280,9 +280,9 @@ def pairwise_comparisons(df, different_attRF = True, different_attLO = False, be
         c["rel2_diff_mag"] = np.sqrt(np.square(c["rel2_diff_ch1"]) + np.square(c["rel2_diff_ch2"]))
         c["rel2_diff_phase"] = np.arctan2(c["rel2_diff_ch1"], c["rel2_diff_ch2"])
 
-        if correction == np.around(1.5e3/8192,4):
+        if correction == np.around(1.0e3/8192,4):
             c["voltage_unit"] = "mV"
-        elif correction == np.around(1.5/8192,4):
+        elif correction == np.around(1.0/8192,4):
             c["voltage_unit"] = "V"
         else:
             c["voltage_unit"] =  "converted by factor {}".format(correction)
@@ -297,9 +297,9 @@ def pairwise_comparisons(df, different_attRF = True, different_attLO = False, be
             c["raw_voltage_eq_mag"] = np.sqrt(np.square(c["raw_voltage_eq_ch1"]) + np.square(c["raw_voltage_eq_ch2"]))
             c["raw_voltage_eq_phase"] = np.arctan2(c["raw_voltage_eq_ch1"], c["raw_voltage_eq_ch2"])
 
-            if correction == np.around(1.5e3/8192,4):
+            if correction == np.around(1.0e3/8192,4):
                 c["eq_voltage_unit"] = "mV"
-            elif correction == np.around(1.5/8192,4):
+            elif correction == np.around(1.0/8192,4):
                 c["eq_voltage_unit"] = "V"
             else:
                 c["eq_voltage_unit"] =  "converted by factor {}".format(correction)
@@ -309,7 +309,7 @@ def pairwise_comparisons(df, different_attRF = True, different_attLO = False, be
     return compared, groups_list
 
 
-def pairwise_comparisons2(df, different_attRF = True, different_attLO = False, between_phantoms = False, between_dates = True, correction = np.around(1.5e3/8192,4)):
+def pairwise_comparisons2(df, different_attRF = True, different_attLO = False, between_phantoms = False, between_dates = True, correction = np.around(1.0e3/8192,4)):
     """Compare pairs of phantom scans on Pandas data frames. This version computes differences in magnitude and phase directly instead of going back to I-Q vector.
 
     Possible to select whether to allow comparison between different attRF, attLO, phantoms/angles or dates.
@@ -329,7 +329,7 @@ def pairwise_comparisons2(df, different_attRF = True, different_attLO = False, b
     between_dates : bool, optional
             set to true to enable comparisons between different dates, by default True
     correction : float, optional
-        conversion scale factor for digital scale data, by default np.around(1.5e3/8192,4)
+        conversion scale factor for digital scale data, by default np.around(1.0e3/8192,4)
         default is equivalent to 0.1831 mV per ADC unit
         set to 1 for no converted files
 
@@ -456,9 +456,9 @@ def pairwise_comparisons2(df, different_attRF = True, different_attLO = False, b
         #c["rel2_diff_mag"] = np.sqrt(np.square(c["rel2_diff_ch1"]) + np.square(c["rel2_diff_ch2"]))
         #c["rel2_diff_phase"] = np.arctan2(c["rel2_diff_ch1"], c["rel2_diff_ch2"])
 
-        if correction == np.around(1.5e3/8192,4):
+        if correction == np.around(1.0e3/8192,4):
             c["voltage_unit"] = "mV"
-        elif correction == np.around(1.5/8192,4):
+        elif correction == np.around(1.0/8192,4):
             c["voltage_unit"] = "V"
         else:
             c["voltage_unit"] =  "converted by factor {}".format(correction)
@@ -473,9 +473,9 @@ def pairwise_comparisons2(df, different_attRF = True, different_attLO = False, b
         #    c["raw_voltage_eq_mag"] = np.sqrt(np.square(c["raw_voltage_eq_ch1"]) + np.square(c["raw_voltage_eq_ch2"]))
         #    c["raw_voltage_eq_phase"] = np.arctan2(c["raw_voltage_eq_ch1"], c["raw_voltage_eq_ch2"])
 
-            if correction == np.around(1.5e3/8192,4):
+            if correction == np.around(1.0e3/8192,4):
                 c["eq_voltage_unit"] = "mV"
-            elif correction == np.around(1.5/8192,4):
+            elif correction == np.around(1.0/8192,4):
                 c["eq_voltage_unit"] = "V"
             else:
                 c["eq_voltage_unit"] =  "converted by factor {}".format(correction)
@@ -484,7 +484,7 @@ def pairwise_comparisons2(df, different_attRF = True, different_attLO = False, b
 
     return compared, groups_list
 
-def pairwsise_comparisons_of_medians(df, different_attRF = True, different_attLO = False, between_phantoms = False, between_dates = True, correction = np.around(1.5e3/8192,4), center = 'median'):
+def pairwsise_comparisons_of_medians(df, different_attRF = True, different_attLO = False, between_phantoms = False, between_dates = True, correction = np.around(1.0e3/8192,4), center = 'median'):
     """Compare pairs of phantom scans on Pandas data frames, using the median/mean for each date.
 
     This version aggregates over all repetitions and iterations for a single date, attemtping to identify the central tendency.
@@ -506,7 +506,7 @@ def pairwsise_comparisons_of_medians(df, different_attRF = True, different_attLO
     between_dates : bool, optional
             set to true to enable comparisons between different dates, by default True
     correction : float, optional
-        conversion scale factor for digital scale data, by default np.around(1.5e3/8192,4)
+        conversion scale factor for digital scale data, by default np.around(1.0e3/8192,4)
         default is equivalent to 0.1831 mV per ADC unit
         set to 1 for no converted files
     center: str, optional
@@ -653,9 +653,9 @@ def pairwsise_comparisons_of_medians(df, different_attRF = True, different_attLO
         #c["rel2_diff_mag"] = np.sqrt(np.square(c["rel2_diff_ch1"]) + np.square(c["rel2_diff_ch2"]))
         #c["rel2_diff_phase"] = np.arctan2(c["rel2_diff_ch1"], c["rel2_diff_ch2"])
 
-        if correction == np.around(1.5e3/8192,4):
+        if correction == np.around(1.0e3/8192,4):
             c["voltage_unit"] = "mV"
-        elif correction == np.around(1.5/8192,4):
+        elif correction == np.around(1.0/8192,4):
             c["voltage_unit"] = "V"
         else:
             c["voltage_unit"] =  "converted by factor {}".format(correction)
@@ -670,9 +670,9 @@ def pairwsise_comparisons_of_medians(df, different_attRF = True, different_attLO
             c["raw_voltage_eq_mag"] = np.sqrt(np.square(c["raw_voltage_eq_ch1"]) + np.square(c["raw_voltage_eq_ch2"]))
             c["raw_voltage_eq_phase"] = np.arctan2(c["raw_voltage_eq_ch1"], c["raw_voltage_eq_ch2"])
 
-            if correction == np.around(1.5e3/8192,4):
+            if correction == np.around(1.0e3/8192,4):
                 c["eq_voltage_unit"] = "mV"
-            elif correction == np.around(1.5/8192,4):
+            elif correction == np.around(1.0/8192,4):
                 c["eq_voltage_unit"] = "V"
             else:
                 c["eq_voltage_unit"] =  "converted by factor {}".format(correction)
@@ -914,9 +914,9 @@ def attenuation_match(df, decimals = 0, correction = np.around(1.0e3/8192,4)):
             df["raw_voltage_eq_mag"] = np.sqrt(np.square(df["raw_voltage_eq_ch1"]) + np.square(df["raw_voltage_eq_ch2"]))
             df["raw_voltage_eq_phase"] = np.arctan2(df["raw_voltage_eq_ch1"], df["raw_voltage_eq_ch2"])
 
-            if correction == np.around(1.5e3/8192,4):
+            if correction == np.around(1.0e3/8192,4):
                 df["eq_voltage_unit"] = "mV"
-            elif correction == np.around(1.5/8192,4):
+            elif correction == np.around(1.0/8192,4):
                 df["eq_voltage_unit"] = "V"
             else:
                 df["eq_voltage_unit"] =  "converted by factor {}".format(correction)
