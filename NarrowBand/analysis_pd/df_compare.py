@@ -259,7 +259,7 @@ def pairwise_comparisons(df, different_attRF = True, different_attLO = False, be
                 c[col] = values[i]
 
             c = name_case_comparisons(c)
-            c_list.append(c)
+            c_list.append(c.copy())
 
         c = pd.concat(c_list)
 
@@ -435,7 +435,7 @@ def pairwise_comparisons2(df, different_attRF = True, different_attLO = False, b
                 c[col] = values[i]
 
             c = name_case_comparisons(c)
-            c_list.append(c)
+            c_list.append(c.copy())
 
         c = pd.concat(c_list)
 
@@ -632,7 +632,7 @@ def pairwsise_comparisons_of_medians(df, different_attRF = True, different_attLO
                 c[col] = values[i]
 
             c = name_case_comparisons(c)
-            c_list.append(c)
+            c_list.append(c.copy())
 
         c = pd.concat(c_list)
 
@@ -744,9 +744,6 @@ def specific_comparison(scan1, scan2, comp_columns = "power_dBm"):
         input dataframe 2
     comp_column : str or list of str
         column name(s) to be compared
-    # implicit_cols : bool, optional
-    #     set to False to force column_1, column_2 format for index columns, by default True
-    #     set to True to leave single index columns if there's only one type found ("phantom" only instead of "phantom_1", "phantom_2")
 
     Returns
     ----------
@@ -784,25 +781,12 @@ def specific_comparison(scan1, scan2, comp_columns = "power_dBm"):
 
     c = pd.DataFrame().reindex(columns=scan1.columns)
 
-    # for c in cols[0:6]:
-    #     if (set(scan1[c].unique()) == set(scan2[c].unique())) and (implicit_cols == True):
-    #         res_df[c] = scan1[c]
-    #     else:
-    #         res_df.drop(columns=c, inplace=True)
-    #         res_df["".join((c,"_1"))] = scan1[c]
-    #         res_df["".join((c,"_2"))] = scan2[c]
-
     scan1_gr = scan1.groupby(by = cols[0:8], observed=True)
     groups1 = [name for name,unused_df in scan1_gr]
     scan2_gr = scan2.groupby(by = cols[0:8], observed=True)
     groups2 = [name for name,unused_df in scan2_gr]
 
-    g_out = []
-
-    for p in it.product(groups1,groups2):
-        # excluding reversed/redundant pairs, i.e. if (A,B) then no need for (B,A)
-        if p <= p[::-1]:
-            g_out.append(p)
+    g_out = it.product(groups1,groups2)
 
     c_list = []
 
@@ -819,10 +803,11 @@ def specific_comparison(scan1, scan2, comp_columns = "power_dBm"):
             c[coln] = values[i]
 
         c = name_case_comparisons(c)
-        c_list.append(c)
+        c_list.append(c.copy())
 
     res_df = pd.concat(c_list)
     res_df.dropna(axis=1, how='all', inplace=True)
+    res_df.reset_index(inplace=True)
 
     return res_df
 
