@@ -1,7 +1,7 @@
 # Python 3.8
-# 2021-03-22
+# 2021-12-03
 
-# Version 1.0.0
+# Version 1.1.0
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -731,7 +731,7 @@ def name_case_comparisons(df):
     return df
 
 
-def specific_comparison(scan1, scan2, comp_column = "power_dBm"):
+def specific_comparison(scan1, scan2, comp_columns = "power_dBm"):
     """Perform comparison between two scans.
 
     Comparison consists of a subtraction (scan1[comp_column] - scan2[comp_column]).
@@ -742,8 +742,8 @@ def specific_comparison(scan1, scan2, comp_column = "power_dBm"):
         input dataframe 1
     scan2 : Pandas df
         input dataframe 2
-    comp_column : str
-        column name to be compared
+    comp_column : str or list of str
+        column name(s) to be compared
     # implicit_cols : bool, optional
     #     set to False to force column_1, column_2 format for index columns, by default True
     #     set to True to leave single index columns if there's only one type found ("phantom" only instead of "phantom_1", "phantom_2")
@@ -753,6 +753,10 @@ def specific_comparison(scan1, scan2, comp_column = "power_dBm"):
     df: Pandas df
         dataframe with "cases" column
     """
+
+    if not isinstance(comp_columns, list):
+        comp_columns = [comp_columns]
+
     # retain only intersection of antenna pairs and frequencies
     scan1, scan2 = remove_non_intersection(scan1, scan2, column = "pair")
     scan1, scan2 = remove_non_intersection(scan1, scan2, column = "freq")
@@ -760,14 +764,16 @@ def specific_comparison(scan1, scan2, comp_column = "power_dBm"):
     scan1, scan2 = attenuation_match2(scan1, scan2, decimals = 0, correction = np.around(1.0e3/8192,4))
 
     # check if power_dBm is present and otherwise calculates it
-    if (comp_column not in scan1) and (comp_column == "power_dBm"):
+    if (not scan1.columns.isin(["power_dBm"]).all()):
         dfproc.calculate_power_dBm(scan1, Z = 50.0, noise_floor = -108, inplace=True)
-    if (comp_column not in scan2) and (comp_column == "power_dBm"):
+    elif (not scan1.columns.isin(comp_columns).all()):
+        print(f"Some comparison column {comp_columns} not present in first dataframe!")
+        return 0
+    if (not scan2.columns.isin(["power_dBm"]).all()):
         dfproc.calculate_power_dBm(scan2, Z = 50.0, noise_floor = -108, inplace=True)
-    elif (comp_column not in scan1):
-        print(f"Comparison column {comp_column} not present in first dataframe!")
-    elif (comp_column not in scan2):
-        print(f"Comparison column {comp_column} not present in second dataframe!")
+    elif (not scan1.columns.isin(comp_columns).all()):
+        print(f"Some comparison column {comp_columns} not present in second dataframe!")
+        return 0
 
     if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
         cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distances"]
@@ -776,7 +782,7 @@ def specific_comparison(scan1, scan2, comp_column = "power_dBm"):
     scan1 = scan1.set_index(keys = cols, drop=True).sort_index()
     scan2 = scan2.set_index(keys = cols, drop=True).sort_index()
 
-    res_df = pd.DataFrame().reindex(columns=scan1.columns)
+    c = pd.DataFrame().reindex(columns=scan1.columns)
 
     # for c in cols[0:6]:
     #     if (set(scan1[c].unique()) == set(scan2[c].unique())) and (implicit_cols == True):
@@ -786,14 +792,14 @@ def specific_comparison(scan1, scan2, comp_column = "power_dBm"):
     #         res_df["".join((c,"_1"))] = scan1[c]
     #         res_df["".join((c,"_2"))] = scan2[c]
 
-    scan1_gr = scan1.groupby(by = cols[0:7], observed=True)
+    scan1_gr = scan1.groupby(by = cols[0:8], observed=True)
     groups1 = [name for name,unused_df in scan1_gr]
-    scan2_gr = scan2.groupby(by = cols[0:7], observed=True)
+    scan2_gr = scan2.groupby(by = cols[0:8], observed=True)
     groups2 = [name for name,unused_df in scan2_gr]
 
     g_out = []
 
-    for p in it.permutations([groups1,groups2],2):
+    for p in it.product(groups1,groups2):
         # excluding reversed/redundant pairs, i.e. if (A,B) then no need for (B,A)
         if p <= p[::-1]:
             g_out.append(p)
@@ -802,24 +808,21 @@ def specific_comparison(scan1, scan2, comp_column = "power_dBm"):
 
     for g in tqdm(g_out):
 
-        if len(g_out) == 1:
-            # skip group comparison for less than one group
-            res_df.loc[:,"_".join((comp_column,"diff"))] = scan1.loc[comp_column].subtract(scan2.loc[comp_column], level="freq", fill_value=0)
-            return res_df
-
-        attRF = max(g[0][7],g[1][7])
-        c.loc[:,"_".join((comp_column,"diff"))] = scan1.loc[g[0],comp_column].subtract(scan2.loc[g[1],comp_column], fill_value=0)
+        # attRF = max(g[0][7],g[1][7])
+        for col in comp_columns:
+            c.loc[:,"_".join((col,"diff"))] = scan1.loc[g[0],col].subtract(scan2.loc[g[1],col], fill_value=0)
 
         col_names = ["phantom_1", "angle_1", "plug_1", "date_1", "rep_1", "iter_1", "attLO_1", "attRF_1", "phantom_2", "angle_2", "plug_2", "date_2", "rep_2", "iter_2", "attLO_2", "attRF_2"]
         values = g[0] + g[1]
 
-        for i, col in enumerate(col_names):
-            c[col] = values[i]
+        for i, coln in enumerate(col_names):
+            c[coln] = values[i]
 
         c = name_case_comparisons(c)
         c_list.append(c)
 
     res_df = pd.concat(c_list)
+    res_df.dropna(axis=1, how='all', inplace=True)
 
     return res_df
 
@@ -850,8 +853,8 @@ def remove_non_intersection(df1, df2, column = "pair", inplace=False):
 
     intersection = natsorted(list(col1.intersection(col2)))
 
-    df1.drop(columns=df1[column].difference(intersection), inplace=True)
-    df2.drop(columns=df2[column].difference(intersection), inplace=True)
+    df1 = df1.loc[df1[column].isin(intersection)]
+    df2 = df2.loc[df2[column].isin(intersection)]
 
     if not inplace:
         return df1, df2
