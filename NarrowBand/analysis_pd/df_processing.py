@@ -708,6 +708,25 @@ def pivot_for_multivariate(df, index=None, columns=list(["pair","freq"]), values
 
     return df2
 
+def split_df(df, groups =  ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"]):
+    """Split Pandas dataframes after grouping.
+
+    Parameters
+    ----------
+    df : Pandas df
+        input dataframe
+    groups : list, optional
+        [description], by default ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"]
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+    df_list = [x for _, x in df.groupby(by=groups, observed=True)]
+
+    return df_list
+
 # Added on 29/08/2020
 # From data_processing.py
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------
