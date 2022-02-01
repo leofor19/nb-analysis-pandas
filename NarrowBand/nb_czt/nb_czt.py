@@ -131,7 +131,7 @@ def generate_freq_array(freqs, max_freq = None, freq_step = None, min_freq = Non
         freq_step = diffs[diffs>0].min()
 
     if max_freq == None:
-        max_freq = freqs.max()
+        max_freq = freqs.max() + freq_step
 
     if min_freq == None:
         if freqs.min() > 0:
@@ -250,9 +250,8 @@ def apply_fft_window(td_df, window_type = 'hann'):
             for date in tqdm(td_df.date.unique(), leave=False):
                 for rep in tqdm(td_df.rep.unique(), leave=False):
                     for ite in tqdm(td_df.iter.unique(), leave=False):
-                        for p in tqdm(td_df.pair.unique(), leave=False):
-                            window = fft_window(td_df.loc[:, "signal"].size, window_type=window_type)
-                            td_df_out.loc[:, "signal"] = window * td_df.loc[:, "signal"]
+                        window = fft_window(td_df.loc[:, "signal"].size, window_type=window_type)
+                        td_df_out.loc[:, "signal"] = window * td_df.loc[:, "signal"]
     return td_df_out
 
 def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, conj_sym=True, auto_complex_plane = True, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False):
@@ -308,9 +307,9 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
             df_list = dfproc.split_df(df, groups=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"])
 
         processed = []
-        in_process = []
 
         for data in tqdm(df_list):
+            in_process = []
             data.reset_index(inplace=True)
             freq = data.freq.unique()
             freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale)
@@ -329,19 +328,24 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
                 fd_data["pair"] = pair
                 fd_data["Tx"] = int(data.loc[data.pair.eq(pair), 'Tx'].unique())
                 fd_data["Rx"] = int(data.loc[data.pair.eq(pair), 'Rx'].unique())
+                fd_data["phantom"] = int(data.phantom.unique())
+                fd_data["angle"] = int(data.angle.unique())
+                fd_data["plug"] = int(data.plug.unique())
+                fd_data["date"] = data.date.unique()[0]
+                fd_data["rep"] = int(data.rep.unique())
+                fd_data["iter"] = int(data.iter.unique())
+                fd_data["attLO"] = data.attLO.unique()[0]
+                fd_data["attRF"] = data.attRF.unique()[0]
+                fd_data["digital_unit"] = data.digital_unit.unique()[0]
+                if data.voltage_unit.unique()[0] == 'mV':
+                    fd_data["voltage_unit"] = 'V'
+                else:
+                    fd_data["voltage_unit"] = data.voltage_unit.unique()[0]
+                if "cal_type" in data.columns:
+                    fd_data["cal_type"] = data.cal_type.unique()[0]
                 in_process.append(fd_data)
-            czt_df = pd.concat(in_process, axis=0)
 
-            czt_df["phantom"] = data.phantom[0]
-            czt_df["angle"] = data.angle[0]
-            czt_df["plug"] = data.plug[0]
-            czt_df["date"] = data.date[0]
-            czt_df["rep"] = data.rep[0]
-            czt_df["iter"] = data.iter[0]
-            czt_df["attLO"] = data.attLO[0]
-            czt_df["attRF"] = data.attRF[0]
-            if "cal_type" in data.columns:
-                czt_df["cal_type"] = data.cal_type[0]
+            czt_df = pd.concat(in_process, axis=0)
 
             processed.append(czt_df)
     else:
@@ -362,12 +366,17 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
                 freqs_out = freqs
             czt_df = pd.DataFrame({'freq': freqs_out, 'czt': czt_data})
 
-            czt_df["cal_type"] = data.cal_type[0]
-            czt_df["date"] = data.date[0]
-            czt_df["rep"] = data.rep[0]
-            czt_df["iter"] = data.iter[0]
-            czt_df["attLO"] = data.attLO[0]
-            czt_df["attRF"] = data.attRF[0]
+            czt_df["cal_type"] = int(data.cal_type.unique())
+            czt_df["date"] = data.date.unique()[0]
+            czt_df["rep"] = int(data.rep.unique())
+            czt_df["iter"] = int(data.iter.unique())
+            czt_df["attLO"] = data.attLO.unique()[0]
+            czt_df["attRF"] = data.attRF.unique()[0]
+            czt_df["digital_unit"] = data.digital_unit.unique()[0]
+            if data.voltage_unit.unique()[0] == 'mV':
+                czt_df["voltage_unit"] = 'V'
+            else:
+                czt_df["voltage_unit"] = data.voltage_unit.unique()[0]
 
             processed.append(czt_df)
 
@@ -376,9 +385,10 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
 
 def array_invert_to_time_domain(freqs, czt_data):
 
-    f, d = conjugate_symmetric(freqs, czt_data)
+    if not check_symmetric(czt_data, tol=1e-8):
+        f, d = conjugate_symmetric(freqs, czt_data)
 
-    N = len(czt_data)/2
+    N = int(len(czt_data)/2)
     time, sig_t = czt.freq2time(f, d)
     return time, N*sig_t
 
@@ -437,9 +447,9 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = ' auto',
             df_list = dfproc.split_df(df, groups=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"])
 
         processed = []
-        in_process = []
 
         for data in tqdm(df_list):
+            in_process = []
             data.reset_index(inplace=True)
             freq = data.freq.unique()
             freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale)
@@ -456,27 +466,31 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = ' auto',
                     t2 = auto_time_array(freqs_out, start = 0, multiple=1)
                 else:
                     t2 = t
-                N = len(czt_data)/2
+                N = int(len(czt_data)/2)
                 time, sig_t = czt.freq2time(freqs_out, czt_data, t = t2)
                 td_data = pd.concat([pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
                 # td_data.columns = pd.MultiIndex.from_product([[pair],['time','signal']])
                 td_data["pair"] = pair
                 td_data["Tx"] = int(data.loc[data.pair.eq(pair), 'Tx'].unique())
                 td_data["Rx"] = int(data.loc[data.pair.eq(pair), 'Rx'].unique())
+                td_data["phantom"] = int(data.phantom.unique())
+                td_data["angle"] = int(data.angle.unique())
+                td_data["plug"] = int(data.plug.unique())
+                td_data["date"] = data.date.unique()[0]
+                td_data["rep"] = int(data.rep.unique())
+                td_data["iter"] = int(data.iter.unique())
+                td_data["attLO"] = data.attLO.unique()[0]
+                td_data["attRF"] = data.attRF.unique()[0]
+                td_data["digital_unit"] = data.digital_unit.unique()[0]
+                if data.voltage_unit.unique()[0] == 'mV':
+                    td_data["voltage_unit"] = 'V'
+                else:
+                    td_data["voltage_unit"] = data.voltage_unit.unique()[0]
+                if "cal_type" in data.columns:
+                    td_data["cal_type"] = data.cal_type.unique()[0]
                 in_process.append(td_data)
+
             iczt_df = pd.concat(in_process, axis=0)
-
-            iczt_df["phantom"] = data.phantom[0]
-            iczt_df["angle"] = data.angle[0]
-            iczt_df["plug"] = data.plug[0]
-            iczt_df["date"] = data.date[0]
-            iczt_df["rep"] = data.rep[0]
-            iczt_df["iter"] = data.iter[0]
-            iczt_df["attLO"] = data.attLO[0]
-            iczt_df["attRF"] = data.attRF[0]
-            if "cal_type" in data.columns:
-                iczt_df["cal_type"] = data.cal_type[0]
-
             processed.append(iczt_df)
 
     else:
@@ -498,16 +512,21 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = ' auto',
                 t2 = auto_time_array(freqs_out, start = 0, multiple=1)
             else:
                 t2 = t
-            N = len(czt_data)/2
+            N = int(len(czt_data)/2)
             time, sig_t = czt.freq2time(freqs_out, czt_data, t = t2)
             iczt_df = pd.DataFrame({'time': time, 'signal': N*sig_t})
 
-            iczt_df["cal_type"] = data.cal_type[0]
-            iczt_df["date"] = data.date[0]
-            iczt_df["rep"] = data.rep[0]
-            iczt_df["iter"] = data.iter[0]
-            iczt_df["attLO"] = data.attLO[0]
-            iczt_df["attRF"] = data.attRF[0]
+            iczt_df["cal_type"] = data.cal_type.unique()[0]
+            iczt_df["date"] = data.date.unique()[0]
+            iczt_df["rep"] = int(data.rep.unique())
+            iczt_df["iter"] = int(data.iter.unique())
+            iczt_df["attLO"] = data.attLO.unique()[0]
+            iczt_df["attRF"] = data.attRF.unique()[0]
+            iczt_df["digital_unit"] = data.digital_unit.unique()[0]
+            if data.voltage_unit.unique()[0] == 'mV':
+                iczt_df["voltage_unit"] = 'V'
+            else:
+                iczt_df["voltage_unit"] = data.voltage_unit.unique()
 
             processed.append(iczt_df)
 
@@ -543,9 +562,9 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True):
 
 
         processed = []
-        in_process = []
 
         for data in tqdm(df_list):
+            in_process = []
             for p in data.pair:
                 scan = data.loc[:, data.pair.eq(p)]
                 if conj_sym:
@@ -557,26 +576,31 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True):
                     t2 = auto_time_array(freqs*1e6, start = 0, multiple=1)
                 else:
                     t2 = t
-                N = len(czt_data)/2
+                N = int(len(czt_data)/2)
                 time, sig_t = czt.freq2time(freqs, czt_data, t=t2)
                 td_data = pd.concat([pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
                 # td_data.columns = pd.MultiIndex.from_product([[p],['time','signal']])
                 td_data["pair"] = p
                 td_data["Tx"] = int(data.loc[data.pair.eq(p), 'Tx'].unique())
                 td_data["Rx"] = int(data.loc[data.pair.eq(p), 'Rx'].unique())
+                td_data["phantom"] = int(data.phantom.unique())
+                td_data["angle"] = int(data.angle.unique())
+                td_data["plug"] = int(data.plug.unique())
+                td_data["date"] = data.date.unique()[0]
+                td_data["rep"] = int(data.rep.unique())
+                td_data["iter"] = int(data.iter.unique())
+                td_data["attLO"] = data.attLO.unique()[0]
+                td_data["attRF"] = data.attRF.unique()[0]
+                td_data["digital_unit"] = data.digital_unit.unique()[0]
+                if data.voltage_unit.unique()[0] == 'mV':
+                    td_data["voltage_unit"] = 'V'
+                else:
+                    td_data["voltage_unit"] = data.voltage_unit.unique()[0]
+                if "cal_type" in data.columns:
+                    td_data["cal_type"] = data.cal_type.unique()[0]
                 in_process.append(td_data)
-            iczt_df = pd.concat(in_process, axis=0)
 
-            iczt_df["phantom"] = data.phantom[0]
-            iczt_df["angle"] = data.angle[0]
-            iczt_df["plug"] = data.plug[0]
-            iczt_df["date"] = data.date[0]
-            iczt_df["rep"] = data.rep[0]
-            iczt_df["iter"] = data.iter[0]
-            iczt_df["attLO"] = data.attLO[0]
-            iczt_df["attRF"] = data.attRF[0]
-            if "cal_type" in data.columns:
-                iczt_df["cal_type"] = data.cal_type[0]
+            iczt_df = pd.concat(in_process, axis=0)
 
             processed.append(iczt_df)
 
@@ -594,16 +618,21 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True):
                     t2 = auto_time_array(freqs, start = 0, multiple=1)
             else:
                 t2 = t
-            N = len(czt_data)/2
+            N = int(len(czt_data)/2)
             time, sig_t = czt.freq2time(freqs, czt_data, t=t2)
             iczt_df = pd.DataFrame({'time': time, 'signal': N*sig_t})
 
-            iczt_df["cal_type"] = data.cal_type[0]
-            iczt_df["date"] = data.date[0]
-            iczt_df["rep"] = data.rep[0]
-            iczt_df["iter"] = data.iter[0]
-            iczt_df["attLO"] = data.attLO[0]
-            iczt_df["attRF"] = data.attRF[0]
+            iczt_df["cal_type"] = data.cal_type.unique()[0]
+            iczt_df["date"] = data.date.unique()[0]
+            iczt_df["rep"] = int(data.rep.unique())
+            iczt_df["iter"] = int(data.iter.unique())
+            iczt_df["attLO"] = data.attLO.unique()[0]
+            iczt_df["attRF"] = data.attRF.unique()[0]
+            iczt_df["digital_unit"] = data.digital_unit.unique()[0]
+            if data.voltage_unit.unique()[0] == 'mV':
+                iczt_df["voltage_unit"] = 'V'
+            else:
+                iczt_df["voltage_unit"] = data.voltage_unit.unique()[0]
 
             processed.append(iczt_df)
 
@@ -638,7 +667,7 @@ def conjugate_symmetric(x, y):
         conjugate symmetric array
     """
     if len(x) != len(y):
-        print("x and y arrays have different lengths!")
+        tqdm.write("x and y arrays have different lengths!")
         return 0
 
     if np.min(x) < 0:
@@ -646,10 +675,10 @@ def conjugate_symmetric(x, y):
             # y is already conjugate symmetric, returns unchanged arrays
             return x, y
         else:
-            print("x array already has negative values but not conjugate symmetric, please verify.")
+            tqdm.write("x array already has negative values but not conjugate symmetric, please verify.")
             return 0
     elif np.round(np.min(x)) != 0:
-        print("x array missing zero, padding arrays.")
+        tqdm.write("x array missing zero, padding arrays.")
         # gets minimum step value
         diffs = np.diff(np.sort(x))
         step = diffs[diffs>0].min()
@@ -817,7 +846,7 @@ def auto_detect_complex_plane(df, signal="voltage", verbose=False):
             quadrant = 1
 
     if verbose:
-        print(f"Median Ch. 1: {est1}, Median Ch. 2: {est2}")
-        print(f"Quadrant: {quadrant}, I-channel: {I}, Q-channel: {Q}")
+        tqdm.write(f"Median Ch. 1: {est1}, Median Ch. 2: {est2}")
+        tqdm.write(f"Quadrant: {quadrant}, I-channel: {I}, Q-channel: {Q}")
 
     return quadrant, I, Q
