@@ -1,8 +1,8 @@
 # Python 3.8.12
 # 2021-12-09
 
-# Version 1.0.1
-# Latest update 2022-01-28
+# Version 1.0.2
+# Latest update 2022-02-01
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -48,11 +48,11 @@ from dask.diagnostics import ProgressBar
 from natsort import natsorted
 import numpy as np
 import pandas as pd
+from scipy.io import savemat
 # from scipy import sparse
 # from tqdm import tqdm # when using terminal
 from tqdm.notebook import tqdm # when using Jupyter Notebook
 #from tqdm.dask import TqdmCallback
-from yaspin import yaspin
 
 # Local application imports
 # import fft_window
@@ -328,24 +328,25 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
                 fd_data["pair"] = pair
                 fd_data["Tx"] = int(data.loc[data.pair.eq(pair), 'Tx'].unique())
                 fd_data["Rx"] = int(data.loc[data.pair.eq(pair), 'Rx'].unique())
-                fd_data["phantom"] = int(data.phantom.unique())
-                fd_data["angle"] = int(data.angle.unique())
-                fd_data["plug"] = int(data.plug.unique())
-                fd_data["date"] = data.date.unique()[0]
-                fd_data["rep"] = int(data.rep.unique())
-                fd_data["iter"] = int(data.iter.unique())
-                fd_data["attLO"] = data.attLO.unique()[0]
-                fd_data["attRF"] = data.attRF.unique()[0]
-                fd_data["digital_unit"] = data.digital_unit.unique()[0]
-                if data.voltage_unit.unique()[0] == 'mV':
-                    fd_data["voltage_unit"] = 'V'
-                else:
-                    fd_data["voltage_unit"] = data.voltage_unit.unique()[0]
-                if "cal_type" in data.columns:
-                    fd_data["cal_type"] = data.cal_type.unique()[0]
                 in_process.append(fd_data)
 
             czt_df = pd.concat(in_process, axis=0)
+
+            czt_df["phantom"] = int(data.phantom.unique())
+            czt_df["angle"] = int(data.angle.unique())
+            czt_df["plug"] = int(data.plug.unique())
+            czt_df["date"] = data.date.unique()[0]
+            czt_df["rep"] = int(data.rep.unique())
+            czt_df["iter"] = int(data.iter.unique())
+            czt_df["attLO"] = data.attLO.unique()[0]
+            czt_df["attRF"] = data.attRF.unique()[0]
+            czt_df["digital_unit"] = data.digital_unit.unique()[0]
+            if data.voltage_unit.unique()[0] == 'mV':
+                czt_df["voltage_unit"] = 'V'
+            else:
+                czt_df["voltage_unit"] = data.voltage_unit.unique()[0]
+            if "cal_type" in data.columns:
+                czt_df["cal_type"] = data.cal_type.unique()[0]
 
             processed.append(czt_df)
     else:
@@ -473,24 +474,27 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = ' auto',
                 td_data["pair"] = pair
                 td_data["Tx"] = int(data.loc[data.pair.eq(pair), 'Tx'].unique())
                 td_data["Rx"] = int(data.loc[data.pair.eq(pair), 'Rx'].unique())
-                td_data["phantom"] = int(data.phantom.unique())
-                td_data["angle"] = int(data.angle.unique())
-                td_data["plug"] = int(data.plug.unique())
-                td_data["date"] = data.date.unique()[0]
-                td_data["rep"] = int(data.rep.unique())
-                td_data["iter"] = int(data.iter.unique())
-                td_data["attLO"] = data.attLO.unique()[0]
-                td_data["attRF"] = data.attRF.unique()[0]
-                td_data["digital_unit"] = data.digital_unit.unique()[0]
-                if data.voltage_unit.unique()[0] == 'mV':
-                    td_data["voltage_unit"] = 'V'
-                else:
-                    td_data["voltage_unit"] = data.voltage_unit.unique()[0]
-                if "cal_type" in data.columns:
-                    td_data["cal_type"] = data.cal_type.unique()[0]
                 in_process.append(td_data)
 
             iczt_df = pd.concat(in_process, axis=0)
+
+            iczt_df["phantom"] = int(data.phantom.unique())
+            iczt_df["angle"] = int(data.angle.unique())
+            iczt_df["plug"] = int(data.plug.unique())
+            iczt_df["date"] = data.date.unique()[0]
+            iczt_df["rep"] = int(data.rep.unique())
+            iczt_df["iter"] = int(data.iter.unique())
+            iczt_df["attLO"] = data.attLO.unique()[0]
+            iczt_df["attRF"] = data.attRF.unique()[0]
+            iczt_df["digital_unit"] = data.digital_unit.unique()[0]
+            if data.voltage_unit.unique()[0] == 'mV':
+                iczt_df["voltage_unit"] = 'V'
+            else:
+                iczt_df["voltage_unit"] = data.voltage_unit.unique()[0]
+            if "cal_type" in data.columns:
+                iczt_df["cal_type"] = data.cal_type.unique()[0]
+
+
             processed.append(iczt_df)
 
     else:
@@ -583,24 +587,25 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True):
                 td_data["pair"] = p
                 td_data["Tx"] = int(data.loc[data.pair.eq(p), 'Tx'].unique())
                 td_data["Rx"] = int(data.loc[data.pair.eq(p), 'Rx'].unique())
-                td_data["phantom"] = int(data.phantom.unique())
-                td_data["angle"] = int(data.angle.unique())
-                td_data["plug"] = int(data.plug.unique())
-                td_data["date"] = data.date.unique()[0]
-                td_data["rep"] = int(data.rep.unique())
-                td_data["iter"] = int(data.iter.unique())
-                td_data["attLO"] = data.attLO.unique()[0]
-                td_data["attRF"] = data.attRF.unique()[0]
-                td_data["digital_unit"] = data.digital_unit.unique()[0]
-                if data.voltage_unit.unique()[0] == 'mV':
-                    td_data["voltage_unit"] = 'V'
-                else:
-                    td_data["voltage_unit"] = data.voltage_unit.unique()[0]
-                if "cal_type" in data.columns:
-                    td_data["cal_type"] = data.cal_type.unique()[0]
                 in_process.append(td_data)
 
             iczt_df = pd.concat(in_process, axis=0)
+
+            iczt_df["phantom"] = int(data.phantom.unique())
+            iczt_df["angle"] = int(data.angle.unique())
+            iczt_df["plug"] = int(data.plug.unique())
+            iczt_df["date"] = data.date.unique()[0]
+            iczt_df["rep"] = int(data.rep.unique())
+            iczt_df["iter"] = int(data.iter.unique())
+            iczt_df["attLO"] = data.attLO.unique()[0]
+            iczt_df["attRF"] = data.attRF.unique()[0]
+            iczt_df["digital_unit"] = data.digital_unit.unique()[0]
+            if data.voltage_unit.unique()[0] == 'mV':
+                iczt_df["voltage_unit"] = 'V'
+            else:
+                iczt_df["voltage_unit"] = data.voltage_unit.unique()[0]
+            if "cal_type" in data.columns:
+                iczt_df["cal_type"] = data.cal_type.unique()[0]
 
             processed.append(iczt_df)
 
@@ -787,7 +792,7 @@ def check_symmetric(a, tol=1e-8):
     bool
        True if conjugate symmetric, False otherwise
     """
-    return np.linalg.norm(a-np.conjugate(a[::-1]), np.Inf) < tol;
+    return np.linalg.norm(a-np.conjugate(a[::-1]), np.Inf) < tol
 
 def auto_detect_complex_plane(df, signal="voltage", verbose=False):
     """Estimate Complex Plane definitions (quadrant, I-ch, Q-ch).
@@ -850,3 +855,80 @@ def auto_detect_complex_plane(df, signal="voltage", verbose=False):
         tqdm.write(f"Quadrant: {quadrant}, I-channel: {I}, Q-channel: {Q}")
 
     return quadrant, I, Q
+
+def convert_to_DMAS_format(df):
+    """Convert Pandas DataFrame of Time-Domain data to numpy array in DMAS algorithm compatible format.
+
+    3-D array has shape (Tx_number , Rx_number , number_of_samples).
+
+    Parameters
+    ----------
+    df : Pandas df
+        input DataFrame with Time-Domain data
+
+    Returns
+    -------
+    matrix_out: np.array
+        3-D numpy array compatible with DMAS algorithm
+    """
+    # forces first unique phantom scan
+    df = df.loc[df.phantom.eq(df.phantom.unique()[0]) & df.angle.eq(df.angle.unique()[0]) & df.date.eq(df.date.unique()[0]) & 
+                df.rep.eq(df.rep.unique()[0]) & df.iter.eq(df.iter.unique()[0])]
+
+    # identifies number of samples
+    N = df.loc[df.phantom.eq(df.phantom.unique()[0]) & df.angle.eq(df.angle.unique()[0]) & df.date.eq(df.date.unique()[0]) & 
+                df.rep.eq(df.rep.unique()[0]) & df.iter.eq(df.iter.unique()[0]) & df.pair.eq(df.pair.unique()[0]), 'signal'].size
+
+    matrix_out = np.zeros((16,16,N), dtype=float)
+
+    for Tx in np.arange(1,17):
+        for Rx in np.arange(1,17):
+            if f"({Tx},{Rx})" in df.pair.unique():
+                matrix_out[Tx-1,Rx-1,:] = df.loc[df.Tx.eq(Tx) & df.Rx.eq(Rx), 'signal'].values
+    return matrix_out
+
+def generate_Mat_file_name(df):
+    """Generate .mat file name from DataFrame info.
+
+    Parameters
+    ----------
+    df : Pandas df
+        input dataframe
+
+    Returns
+    -------
+    filename: str
+        .mat file name
+    """
+
+    file_name = f"Phantom_{df.phantom.unique()[0]}_Ang_{df.angle.unique()[0]}_Date_{df.date.unique()[0]}_Plug_{df.plug.unique()[0]}_Rep_{df.rep.unique()[0]}_Iter_{df.iter.unique()[0]}.mat"
+
+    return file_name
+
+def export_to_DMAS_Matlab(df, main_path="C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/Analysis/{}/Mat/".format(datetime.now().strftime("%Y_%m_%d")), file_name=None):
+    """Save .mat file from phantom scan DataFrame.
+
+    Please select specific phantom scan (phantom, angle, date, rep, iter, plug) before exporting.
+
+    Parameters
+    ----------
+    df : Pandas df
+        input pantom scan dataframe
+    main_path : str, optional
+        file path to save .mat file, by default "C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/Analysis/{}/Mat/".format(datetime.now().strftime("%Y_%m_%d"))
+    file_name : str, optional
+        .mat file name, by default None
+        if None, automatically generates file name from dataframe info.
+    """
+    if file_name is None:
+        file_name = generate_Mat_file_name(df)
+    file_path = "".join((main_path, file_name))
+
+    if not os.path.exists(os.path.dirname(file_path)):
+        os.makedirs(os.path.dirname(file_path))
+
+    matrix = convert_to_DMAS_format(df)
+
+    savemat(file_path, {'Scan': matrix})
+    tqdm.write(f"Matlab file written: {file_path}")
+    return

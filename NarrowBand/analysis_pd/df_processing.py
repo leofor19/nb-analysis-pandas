@@ -360,7 +360,7 @@ def power2dBm(power_W, noise_floor = -108):
 
     return power_dBm
 
-def milivolts2dBm(milivolts, Z = 50.0, noise_floor = 0.1252):
+def milivolts2dBm(milivolts, Z = 50.0, noise_floor = np.around(1.0e3/8192,4)):
     """Convert mV to dBm.
 
     Zero values are replaced by a noise floor estimation, by default 0.1252 mV.
@@ -389,7 +389,7 @@ def milivolts2dBm(milivolts, Z = 50.0, noise_floor = 0.1252):
 
     return 10.0 * np.log10(arg, where= arg > 0)
 
-def volts2dBm(volts, Z = 50.0, noise_floor = 0.1252):
+def volts2dBm(volts, Z = 50.0, noise_floor =np.around(1.0e3/8192,4)):
     """Convert V to dBm.
 
     Zero values are replaced by a noise floor estimation, by default 0.1252 mV.
@@ -2507,7 +2507,7 @@ def calibration_mean_dataframe(date, main_path = "{}/OneDrive - McGill Universit
 
     return data_mean
 
-def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']),  processed_path = "Processed/DF/",
+def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE']),  processed_path = "Processed/DF 04/",
                         sub_folder = "Means/", correction = np.around(1.0e3/8192,4), decimals = 4, file_format="parquet", parquet_engine= 'pyarrow', is_recursive= False, center = 'mean'):
     """Perform Average Trace Subtraction on Pandas DataFrame "phantom data set files".
 

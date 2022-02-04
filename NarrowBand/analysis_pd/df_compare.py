@@ -732,7 +732,7 @@ def name_case_comparisons(df):
 
 
 def specific_comparison(scan1, scan2, comp_columns = "power_dBm"):
-    """Perform comparison between two scans.
+    """Perform comparison between two phantom scans.
 
     Comparison consists of a subtraction (scan1[comp_column] - scan2[comp_column]).
 
@@ -748,7 +748,7 @@ def specific_comparison(scan1, scan2, comp_columns = "power_dBm"):
     Returns
     ----------
     df: Pandas df
-        dataframe with "cases" column
+        dataframe with "diff" column
     """
 
     if not isinstance(comp_columns, list):
@@ -756,26 +756,39 @@ def specific_comparison(scan1, scan2, comp_columns = "power_dBm"):
 
     # retain only intersection of antenna pairs and frequencies
     scan1, scan2 = remove_non_intersection(scan1, scan2, column = "pair")
-    scan1, scan2 = remove_non_intersection(scan1, scan2, column = "freq")
+    if ("freq".casefold() in scan1.columns) and ("freq".casefold() in scan1.columns):
+        scan1, scan2 = remove_non_intersection(scan1, scan2, column = "freq")
+    elif ("time".casefold() in scan1.columns) and ("time".casefold() in scan1.columns):
+        scan1, scan2 = remove_non_intersection(scan1, scan2, column = "time")
 
     scan1, scan2 = attenuation_match2(scan1, scan2, decimals = 0, correction = np.around(1.0e3/8192,4))
 
-    # check if power_dBm is present and otherwise calculates it
-    if (not scan1.columns.isin(["power_dBm"]).all()):
-        dfproc.calculate_power_dBm(scan1, Z = 50.0, noise_floor = -108, inplace=True)
-    elif (not scan1.columns.isin(comp_columns).all()):
-        print(f"Some comparison column {comp_columns} not present in first dataframe!")
-        return 0
-    if (not scan2.columns.isin(["power_dBm"]).all()):
-        dfproc.calculate_power_dBm(scan2, Z = 50.0, noise_floor = -108, inplace=True)
-    elif (not scan1.columns.isin(comp_columns).all()):
-        print(f"Some comparison column {comp_columns} not present in second dataframe!")
-        return 0
+    if "power_dBm" in comp_columns:
+        # check if power_dBm is present and otherwise calculates it
+        if (not scan1.columns.isin(["power_dBm"]).all()):
+            dfproc.calculate_power_dBm(scan1, Z = 50.0, noise_floor = -108, inplace=True)
+        elif (not scan1.columns.isin(comp_columns).all()):
+            print(f"Some comparison column {comp_columns} not present in first dataframe!")
+            return 0
+        if (not scan2.columns.isin(["power_dBm"]).all()):
+            dfproc.calculate_power_dBm(scan2, Z = 50.0, noise_floor = -108, inplace=True)
+        elif (not scan1.columns.isin(comp_columns).all()):
+            print(f"Some comparison column {comp_columns} not present in second dataframe!")
+            return 0
 
-    if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
-        cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distances"]
+    if ("freq".casefold() in scan1.columns) and ("freq".casefold() in scan1.columns):
+        if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distances"]
+        else:
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq"]
+    elif ("time".casefold() in scan1.columns) and ("time".casefold() in scan1.columns):
+        if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "time", "distances"]
+        else:
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "time"]
     else:
-        cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq"]
+        print("Dataframes types are incompatible (Frequency Domain vs. Time Domain).")
+        return 0
     scan1 = scan1.set_index(keys = cols, drop=True).sort_index()
     scan2 = scan2.set_index(keys = cols, drop=True).sort_index()
 
