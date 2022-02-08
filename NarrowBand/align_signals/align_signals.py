@@ -95,7 +95,7 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
     max_delay : int or None, optional
         optional maximum tolerated delay, by default None
     truncate : bool, optional
-        set to True to maintain size of input arrays (truncating and appending zeroes) or to False to implement delay by prepending with zeroes, by default True
+        set to True to maintain size of input arrays (truncating and prepending zeroes) or to False to implement delay by prepending with zeroes, by default True
     output_delay : bool, optional
         set to True to also return delay value, by default False
 
@@ -116,8 +116,8 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
             out1 = s1[delay:]
             out2 = s2
 
-            # appending zeroes
-            out1 = np.pad(out1, (0, int(len(s1) - len(out1))), mode='constant', constant_values = 0)
+            # prepending zeroes
+            out1 = np.pad(out1, (delay, 0), mode='constant', constant_values = 0)
 
         else:
             # prepending zeroes
@@ -128,8 +128,8 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
             out1 = s1
             out2 = s2[(-delay):]
 
-            # appending zeroes
-            out2 = np.pad(out2, (0, int(len(s2) - len(out2))), mode='constant', constant_values = 0)
+            # prepending zeroes
+            out2 = np.pad(out2, (-delay, 0), mode='constant', constant_values = 0)
 
         else:
             # prepending zeroes
