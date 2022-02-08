@@ -49,7 +49,7 @@ from natsort import natsorted
 import numpy as np
 import pandas as pd
 from scipy.io import savemat
-# from scipy import sparse
+from scipy import signal
 import seaborn as sns
 # from tqdm import tqdm # when using terminal
 from tqdm.notebook import tqdm # when using Jupyter Notebook
@@ -211,7 +211,7 @@ def place_czt_value(czt_data, f, freqs, df, pair = None, quadrant = 1, I=2, Q=1,
 
     return czt_data_out
 
-def apply_fft_window(td_df, window_type = 'hann'):
+def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
     """Apply window to time-domain for reducing sidelobes due to FFT of incoherently sampled data.
 
         Window type is a case INsensitive string and can be one of:
@@ -221,12 +221,19 @@ def apply_fft_window(td_df, window_type = 'hann'):
 
         Window is to be applied to time-domain signal.
 
+        Can also apply scipy.signal.get_window(), which has more options. Some of these require tuples for window_type.
+        Please see Scipy docs for further information (https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html)
+
     Parameters
     ----------
     td_df : Pandas df
         dataframe with time-domain signals
     window_type : str, optional
         string with window type (as explained above), by default 'hann'
+    use_scipy: bool, optional
+        set to True to use scipy.signal.get_window function, by default False
+        see Scipy docs for further information (https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html)
+        some window types require tuples for window_type
 
     Returns
     -------
@@ -247,7 +254,10 @@ def apply_fft_window(td_df, window_type = 'hann'):
                             for ite in tqdm(td_df.iter.unique(), leave=False):
                                 for p in tqdm(td_df.pair.unique(), leave=False):
                                     data = td_df.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) & (td_df.pair.eq(p)),:]
-                                    window = fft_window(data.signal.size, window_type=window_type)
+                                    if use_scipy:
+                                        window = signal.get_window(window=window_type, Nx = data.signal.size, fft_bins = True)
+                                    else:
+                                        window = fft_window(data.signal.size, window_type=window_type)
                                     td_df_out.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) 
                                                     & (td_df.pair.eq(p)), "signal"] = window * data.loc[:, "signal"]
         else:
@@ -255,7 +265,10 @@ def apply_fft_window(td_df, window_type = 'hann'):
                 for date in tqdm(td_df.date.unique(), leave=False):
                     for rep in tqdm(td_df.rep.unique(), leave=False):
                         for ite in tqdm(td_df.iter.unique(), leave=False):
-                            window = fft_window(td_df.loc[:, "signal"].size, window_type=window_type)
+                            if use_scipy:
+                                window = signal.get_window(window=window_type, Nx = td_df.loc[:, "signal"].size, fft_bins = True)
+                            else:
+                                window = fft_window(td_df.loc[:, "signal"].size, window_type=window_type)
                             td_df_out.loc[:, "signal"] = window * td_df.loc[:, "signal"]
         return td_df_out
 
@@ -938,7 +951,7 @@ def export_to_DMAS_Matlab(df, main_path="C:/Users/leofo/OneDrive - McGill Univer
     tqdm.write(f"Matlab file written: {file_path}")
     return
 
-def plot_complex_quadrants(df, pair = None, I = 1, Q = 2, fscale = 1e6, save_figure_path=None, window_type = 'hann'):
+def plot_complex_quadrants(df, pair = None, I = 1, Q = 2, fscale = 1e6, t = 'auto', save_figure_path=None, window_type = 'hann'):
 
     if pair:
         df = df.loc[df.pair.eq(pair)]
@@ -946,7 +959,7 @@ def plot_complex_quadrants(df, pair = None, I = 1, Q = 2, fscale = 1e6, save_fig
     out = []
 
     for quad in np.arange(1,5):
-        czt = df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym=True, auto_complex_plane = False, 
+        czt = df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = t, min_freq = None, conj_sym=True, auto_complex_plane = False, 
                                 quadrant = quad, I=I, Q=Q, signal='voltage', fscale = fscale, verbose = False)
         czt['quadrant'] = quad
         czt = apply_fft_window(czt, window_type = window_type)

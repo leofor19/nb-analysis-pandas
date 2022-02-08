@@ -32,8 +32,8 @@ Written by: Leonardo Fortaleza
 # Third-party library imports
 # import dask.dataframe as dd
 # from dask.diagnostics import ProgressBar
-from turtle import onclick
-import matplotlib.pyplot as plt
+# from turtle import onclick
+# import matplotlib.pyplot as plt
 # from natsort import natsorted
 import numpy as np
 # import pandas as pd
