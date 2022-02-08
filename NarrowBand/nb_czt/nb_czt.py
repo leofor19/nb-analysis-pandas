@@ -44,12 +44,13 @@ import warnings
 # Third-party library imports
 import dask.dataframe as dd
 from dask.diagnostics import ProgressBar
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from natsort import natsorted
 import numpy as np
 import pandas as pd
 from scipy.io import savemat
 # from scipy import sparse
+import seaborn as sns
 # from tqdm import tqdm # when using terminal
 from tqdm.notebook import tqdm # when using Jupyter Notebook
 #from tqdm.dask import TqdmCallback
@@ -233,26 +234,30 @@ def apply_fft_window(td_df, window_type = 'hann'):
         dataframe after window application
     """
     td_df_out = deepcopy(td_df)
-    # if dataset contains antenna pairs, it will follow phantom data scan format, otherwise it contains cal_type 1-3
-    if ('pair' in td_df.columns):
-        for ph in tqdm(td_df.phantom.unique()):
-            for plug in tqdm(td_df.plug.unique(), leave=False):
+
+    if window_type is None:
+        return td_df_out
+    else:
+        # if dataset contains antenna pairs, it will follow phantom data scan format, otherwise it contains cal_type 1-3
+        if ('pair' in td_df.columns):
+            for ph in tqdm(td_df.phantom.unique()):
+                for plug in tqdm(td_df.plug.unique(), leave=False):
+                    for date in tqdm(td_df.date.unique(), leave=False):
+                        for rep in tqdm(td_df.rep.unique(), leave=False):
+                            for ite in tqdm(td_df.iter.unique(), leave=False):
+                                for p in tqdm(td_df.pair.unique(), leave=False):
+                                    data = td_df.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) & (td_df.pair.eq(p)),:]
+                                    window = fft_window(data.signal.size, window_type=window_type)
+                                    td_df_out.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) 
+                                                    & (td_df.pair.eq(p)), "signal"] = window * data.loc[:, "signal"]
+        else:
+            for cal_type in tqdm(td_df.cal_type.unique()):
                 for date in tqdm(td_df.date.unique(), leave=False):
                     for rep in tqdm(td_df.rep.unique(), leave=False):
                         for ite in tqdm(td_df.iter.unique(), leave=False):
-                            for p in tqdm(td_df.pair.unique(), leave=False):
-                                data = td_df.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) & (td_df.pair.eq(p)),:]
-                                window = fft_window(data.signal.size, window_type=window_type)
-                                td_df_out.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) 
-                                                & (td_df.pair.eq(p)), "signal"] = window * data.loc[:, "signal"]
-    else:
-        for cal_type in tqdm(td_df.cal_type.unique()):
-            for date in tqdm(td_df.date.unique(), leave=False):
-                for rep in tqdm(td_df.rep.unique(), leave=False):
-                    for ite in tqdm(td_df.iter.unique(), leave=False):
-                        window = fft_window(td_df.loc[:, "signal"].size, window_type=window_type)
-                        td_df_out.loc[:, "signal"] = window * td_df.loc[:, "signal"]
-    return td_df_out
+                            window = fft_window(td_df.loc[:, "signal"].size, window_type=window_type)
+                            td_df_out.loc[:, "signal"] = window * td_df.loc[:, "signal"]
+        return td_df_out
 
 def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, conj_sym=True, auto_complex_plane = True, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False):
     """Convert phantom data scan DataFrame into new Dataframe with reconstructed CZT signals.
@@ -393,7 +398,7 @@ def array_invert_to_time_domain(freqs, czt_data):
     time, sig_t = czt.freq2time(f, d)
     return time, N*sig_t
 
-def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = ' auto', min_freq = None, conj_sym=True, auto_complex_plane = True, 
+def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym=True, auto_complex_plane = True, 
                                 quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False):
     """Convert phantom data scan DataFrame into new Dataframe with converted ICZT signals.
 
@@ -931,4 +936,52 @@ def export_to_DMAS_Matlab(df, main_path="C:/Users/leofo/OneDrive - McGill Univer
 
     savemat(file_path, {'Scan': matrix})
     tqdm.write(f"Matlab file written: {file_path}")
+    return
+
+def plot_complex_quadrants(df, pair = None, I = 1, Q = 2, fscale = 1e6, save_figure_path=None, window_type = 'hann'):
+
+    if pair:
+        df = df.loc[df.pair.eq(pair)]
+
+    out = []
+
+    for quad in np.arange(1,5):
+        czt = df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym=True, auto_complex_plane = False, 
+                                quadrant = quad, I=I, Q=Q, signal='voltage', fscale = fscale, verbose = False)
+        czt['quadrant'] = quad
+        czt = apply_fft_window(czt, window_type = window_type)
+
+        out.append(czt)
+
+    dfout = pd.concat(out)
+
+    dfout['signal'] = np.real(dfout.signal)
+
+    dfout['scan'] = 'Rep ' + dfout.rep.astype(str) + ' Iter ' + dfout.iter.astype(str)
+
+    if 'plug' in dfout.columns:
+        p = 'plug'
+    else:
+        p = None
+
+    # Save a palette to a variable:
+    #palette = sns.color_palette("bright")
+    palette = sns.color_palette("colorblind")
+
+    # Use palplot and pass in the variable:
+    # Set the palette using the name of a palette:
+    sns.set_palette(palette)
+    sns.set(rc={'figure.figsize':(20,10)}, font_scale=1.5)
+
+    g = sns.relplot(data=dfout, x="time", y="signal", hue='scan', size=None, style= p, row=None, col="quadrant", col_wrap=2,
+                row_order=None, col_order=None, palette=None, hue_order=None, hue_norm=None, sizes=None, size_order=None, 
+                size_norm=None, markers=None, dashes=None, style_order=None, legend='auto', kind='line', height=5, aspect=1, 
+                facet_kws={'sharey': False, 'sharex': True}, units=None)
+
+    if save_figure_path: # checks if empty value (such as 0, '', [], None)
+        if not os.path.exists(os.path.dirname(save_figure_path)):
+            os.makedirs(os.path.dirname(save_figure_path))
+        plt.savefig(save_figure_path, dpi=800)
+    else:
+        plt.show()
     return
