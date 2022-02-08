@@ -32,7 +32,8 @@ Written by: Leonardo Fortaleza
 # Third-party library imports
 # import dask.dataframe as dd
 # from dask.diagnostics import ProgressBar
-# import matplotlib.pyplot as plt
+from turtle import onclick
+import matplotlib.pyplot as plt
 # from natsort import natsorted
 import numpy as np
 # import pandas as pd
@@ -52,10 +53,14 @@ import scipy.signal as signal
 # import NarrowBand.analysis_pd.df_data_essentials as nbd
 # from NarrowBand.analysis_pd.uncategorize import uncategorize
 
-def find_delay(s1, s2, max_delay = None):
+def find_delay_old(s1, s2, max_delay = None):
     """Find delay between two signals using cross-correlation.
 
     Note that the delay is an integer, indicating the lag by number of samples.
+
+    If max_delay is None, the maximum tolerated delay is the smallest length of the input arrays.
+
+    Inputs are expected to be 1-D arrays.
 
     Parameters
     ----------
@@ -71,13 +76,63 @@ def find_delay(s1, s2, max_delay = None):
     delay : int
         integer output delay, signifying lag by number of samples
     """
-    xcorr = signal.correlate(s1, s2, mode='full')
+    xcorr = signal.correlate(s1, s2, mode='full', method='auto')
+    lags = signal.correlation_lags(np.size(s1), np.size(s2), mode='full')
+    delay = lags[np.argmax(xcorr)]
 
-    delay = np.nanargmax(np.abs(xcorr))
+    if max_delay is None:
+        max_delay = np.min([len(s1),len(s2)])
 
-    if max_delay is not None:
-        if delay > max_delay:
-            delay = max_delay
+    if delay > max_delay:
+        delay = max_delay
+
+    return delay
+
+def find_delay(s1, s2, max_delay = None):
+    """Find delay between two signals using cross-correlation.
+
+    Note that the delay is an integer, indicating the lag by number of samples.
+
+    If max_delay is None, the maximum tolerated delay is the smallest length of the input arrays.
+
+    Inputs are expected to be 1-D arrays.
+
+    Parameters
+    ----------
+    s1 : np.array-like
+        input array 1
+    s2 : np.array-like
+        input array 2
+    max_delay : int or None, optional
+        optional maximum tolerated delay, by default None
+
+    Returns
+    -------
+    delay : int
+        integer output delay, signifying lag by number of samples
+    """
+    xcorr1 = signal.correlate(s1, s2, mode='full', method='auto')
+    lags1 = signal.correlation_lags(np.size(s1), np.size(s2), mode='full')
+    delay1 = lags1[np.argmax(xcorr1)]
+
+    xcorr2 = signal.correlate(s2, s1, mode='full', method='auto')
+    lags2 = signal.correlation_lags(np.size(s2), np.size(s1), mode='full')
+    delay2 = lags2[np.argmax(xcorr2)]
+
+    if (np.abs(delay1) > np.abs(delay2)):
+        delay = -delay2
+    elif (np.abs(delay1) == np.abs(delay2)):
+        delay = np.abs(delay1)
+    else:
+        delay = delay1
+
+    if max_delay is None:
+        max_delay = np.min([len(s1),len(s2)])
+
+    if (delay > max_delay) and (delay > 0):
+        delay = max_delay
+    elif (delay < -max_delay) and (delay < 0):
+        delay = -max_delay
 
     return delay
 
@@ -85,6 +140,10 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
     """Align two signals by delaying earliest signal.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
+
+    Inputs are expected to be 1-D arrays.
+
+    If max_delay is None, the maximum tolerated delay is the smallest length of the input arrays.
 
     Parameters
     ----------
@@ -111,29 +170,35 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
     """
     delay = find_delay(s1, s2, max_delay = max_delay)
 
-    if delay >= 0:
+    if delay == 0:
+        out1 = s1
+        out2 = s2
+
+    elif delay > 0:
         if truncate:
-            out1 = s1[delay:]
+            out1 = s1[:-delay]
             out2 = s2
 
             # prepending zeroes
             out1 = np.pad(out1, (delay, 0), mode='constant', constant_values = 0)
 
         else:
+            out1 = s1
             # prepending zeroes
-            out1 = np.pad(s1, (delay, 0), mode='constant', constant_values = 0)
+            out2 = np.pad(s2, (delay, 0), mode='constant', constant_values = 0)
 
     else:
         if truncate:
             out1 = s1
-            out2 = s2[(-delay):]
+            out2 = s2[:delay]
 
             # prepending zeroes
-            out2 = np.pad(out2, (-delay, 0), mode='constant', constant_values = 0)
+            out2 = np.pad(out2, ((-delay), 0), mode='constant', constant_values = 0)
 
         else:
+            out2 = s2
             # prepending zeroes
-            out2 = np.pad(s2, (-delay, 0), mode='constant', constant_values = 0)
+            out1 = np.pad(s1, ((-delay), 0), mode='constant', constant_values = 0)
 
     if output_delay:
         return  out1, out2, delay
