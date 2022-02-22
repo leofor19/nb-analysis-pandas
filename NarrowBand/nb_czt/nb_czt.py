@@ -265,11 +265,12 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
                 for date in tqdm(td_df.date.unique(), leave=False):
                     for rep in tqdm(td_df.rep.unique(), leave=False):
                         for ite in tqdm(td_df.iter.unique(), leave=False):
+                            data = td_df.loc[(td_df.cal_type.eq(cal_type)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)),:]
                             if use_scipy:
-                                window = signal.get_window(window=window_type, Nx = td_df.loc[:, "signal"].size, fft_bins = True)
+                                window = signal.get_window(window=window_type, Nx = data.loc[:, "signal"].size, fft_bins = True)
                             else:
-                                window = fft_window(td_df.loc[:, "signal"].size, window_type=window_type)
-                            td_df_out.loc[:, "signal"] = window * td_df.loc[:, "signal"]
+                                window = fft_window(data.loc[:, "signal"].size, window_type=window_type)
+                            td_df_out.loc[(td_df.cal_type.eq(cal_type)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)), "signal"] = window * data.loc[:, "signal"]
         return td_df_out
 
 def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, conj_sym=True, auto_complex_plane = True, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False):

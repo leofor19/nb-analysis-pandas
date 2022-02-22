@@ -1,8 +1,8 @@
 # Python 3.8.12
 # 2022-02-07
 
-# Version 1.0.0
-# Latest update 2022-02-07
+# Version 1.0.1
+# Latest update 2022-02-17
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -49,18 +49,21 @@ import scipy.signal as signal
 # from NarrowBand.nb_czt import czt
 # from NarrowBand.nb_czt.fft_window import fft_window
 # import NarrowBand.analysis_pd.df_antenna_space as dfant
+# import NarrowBand.analysis_pd.df_compare as dfcomp
 # import NarrowBand.analysis_pd.df_processing as dfproc
 # import NarrowBand.analysis_pd.df_data_essentials as nbd
 # from NarrowBand.analysis_pd.uncategorize import uncategorize
 
 def find_delay_old(s1, s2, max_delay = None):
-    """Find delay between two signals using cross-correlation.
+    """(Depracated) Find delay between two signals using cross-correlation.
 
     Note that the delay is an integer, indicating the lag by number of samples.
 
     If max_delay is None, the maximum tolerated delay is the smallest length of the input arrays.
 
     Inputs are expected to be 1-D arrays.
+
+    This version (find_delay_old) used only one direction for the cross-correlation, which can result in wrong values.
 
     Parameters
     ----------
@@ -85,6 +88,44 @@ def find_delay_old(s1, s2, max_delay = None):
 
     if delay > max_delay:
         delay = max_delay
+
+    return delay
+
+def find_delay_simple_max_peak(s1, max_delay = None, peak_center = 0):
+    """Find delay between two signals by centering highest absolute peak at peak_center.
+
+    Note that the delay is an integer, indicating the lag by number of samples.
+
+    If max_delay is None, the maximum tolerated delay is the smallest length of the input arrays.
+
+    Inputs are expected to be 1-D arrays.
+
+    Use input peak_center to select the desired offset for the highest absolute peak. A value of 0 means the center of the array (int(len(s1)/2)).
+
+    Parameters
+    ----------
+    s1 : np.array-like
+        input array 1
+    max_delay : int or None, optional
+        optional maximum tolerated delay, by default None
+    peak_center : int or None, optional
+        optional maximum tolerated delay, by default None
+
+    Returns
+    -------
+    delay : int
+        integer output delay, signifying lag by number of samples
+    """
+
+    delay = np.argmax(np.abs(s1)) - int(peak_center)
+
+    if max_delay is None:
+        max_delay = np.min([len(s1)])
+
+    if (delay > max_delay) and (delay > 0):
+        delay = max_delay
+    elif (delay < -max_delay) and (delay < 0):
+        delay = -max_delay
 
     return delay
 
@@ -136,7 +177,7 @@ def find_delay(s1, s2, max_delay = None):
 
     return delay
 
-def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False):
+def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None):
     """Align two signals by delaying earliest signal.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
@@ -157,6 +198,8 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
         set to True to maintain size of input arrays (truncating and prepending zeroes) or to False to implement delay by prepending with zeroes, by default True
     output_delay : bool, optional
         set to True to also return delay value, by default False
+    assigned_delay : int or None, optional
+        optional value for delay bypassing find_delay function, by default None
 
     Returns
     -------
@@ -168,7 +211,11 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
         returned if output_delay is set to True
         integer output delay, signifying lag by number of samples
     """
-    delay = find_delay(s1, s2, max_delay = max_delay)
+    if isinstance(assigned_delay, int):
+        # use assigned_delay if it's an integer value
+        delay = assigned_delay
+    else:
+        delay = find_delay(s1, s2, max_delay = max_delay)
 
     if delay == 0:
         out1 = s1
