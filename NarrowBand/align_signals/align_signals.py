@@ -129,7 +129,7 @@ def find_delay_simple_max_peak(s1, max_delay = None, peak_center = 0):
 
     return delay
 
-def find_delay(s1, s2, max_delay = None):
+def find_delay(s1, s2, max_delay = None, out_xcorr = False):
     """Find delay between two signals using cross-correlation.
 
     Note that the delay is an integer, indicating the lag by number of samples.
@@ -146,11 +146,16 @@ def find_delay(s1, s2, max_delay = None):
         input array 2
     max_delay : int or None, optional
         optional maximum tolerated delay, by default None
+    out_xcorr : bool, optional
+        set to True to output cross-correlation, by default False
 
     Returns
     -------
     delay : int
         integer output delay, signifying lag by number of samples
+    xcorr_out : np.array, optional
+        returned if out_xcorr is set to True
+        cross-correlation result between arrays
     """
     xcorr1 = signal.correlate(s1, s2, mode='full', method='auto')
     lags1 = signal.correlation_lags(np.size(s1), np.size(s2), mode='full')
@@ -162,10 +167,13 @@ def find_delay(s1, s2, max_delay = None):
 
     if (np.abs(delay1) > np.abs(delay2)):
         delay = -delay2
+        xcorr_out = xcorr2
     elif (np.abs(delay1) == np.abs(delay2)):
         delay = np.abs(delay1)
+        xcorr_out = xcorr1
     else:
         delay = delay1
+        xcorr_out = xcorr1
 
     if max_delay is None:
         max_delay = np.min([len(s1),len(s2)])
@@ -175,9 +183,12 @@ def find_delay(s1, s2, max_delay = None):
     elif (delay < -max_delay) and (delay < 0):
         delay = -max_delay
 
-    return delay
+    if out_xcorr:
+        return delay, xcorr_out
+    else:
+        return delay
 
-def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None):
+def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False):
     """Align two signals by delaying earliest signal.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
@@ -200,6 +211,8 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
         set to True to also return delay value, by default False
     assigned_delay : int or None, optional
         optional value for delay bypassing find_delay function, by default None
+    out_xcorr : bool, optional
+        set to True to output cross-correlation, by default False
 
     Returns
     -------
@@ -210,10 +223,15 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
     delay : int, optional
         returned if output_delay is set to True
         integer output delay, signifying lag by number of samples
+    xcorr_out : np.array, optional
+        returned if out_xcorr is set to True
+        cross-correlation result between arrays
     """
     if isinstance(assigned_delay, int):
         # use assigned_delay if it's an integer value
         delay = assigned_delay
+    elif out_xcorr:
+        delay, xcorr_out = find_delay(s1, s2, max_delay = max_delay, out_xcorr = out_xcorr)
     else:
         delay = find_delay(s1, s2, max_delay = max_delay)
 
@@ -248,6 +266,11 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
             out1 = np.pad(s1, ((-delay), 0), mode='constant', constant_values = 0)
 
     if output_delay:
-        return  out1, out2, delay
+        if out_xcorr:
+            return  out1, out2, delay, xcorr_out
+        else:
+            return  out1, out2, delay
+    elif out_xcorr:
+        return  out1, out2, xcorr_out
     else:
         return out1, out2

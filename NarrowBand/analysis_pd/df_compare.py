@@ -776,12 +776,17 @@ def specific_comparison(scan1, scan2, comp_columns = "power_dBm"):
             print(f"Some comparison column {comp_columns} not present in second dataframe!")
             return 0
 
-    if ("freq".casefold() in scan1.columns) and ("freq".casefold() in scan1.columns):
+    if ("freq".casefold() in scan1.columns) and ("freq".casefold() in scan2.columns):
         if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distances"]
         else:
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq"]
-    elif ("time".casefold() in scan1.columns) and ("time".casefold() in scan1.columns):
+    elif ("sample".casefold() in scan1.columns) and ("sample".casefold() in scan2.columns):
+        if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "sample", "time", "distances"]
+        else:
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "sample", "time"]
+    elif ("time".casefold() in scan1.columns) and ("time".casefold() in scan2.columns):
         if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "time", "distances"]
         else:

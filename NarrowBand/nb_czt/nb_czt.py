@@ -488,7 +488,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
                     t2 = t
                 N = int(len(czt_data)/2)
                 time, sig_t = czt.freq2time(freqs_out, czt_data, t = t2)
-                td_data = pd.concat([pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
+                td_data = pd.concat([pd.DataFrame({'sample': np.arange(0,len(sig_t))}), pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
                 # td_data.columns = pd.MultiIndex.from_product([[pair],['time','signal']])
                 td_data["pair"] = pair
                 td_data["Tx"] = int(data.loc[data.pair.eq(pair), 'Tx'].unique())
@@ -537,7 +537,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
                 t2 = t
             N = int(len(czt_data)/2)
             time, sig_t = czt.freq2time(freqs_out, czt_data, t = t2)
-            iczt_df = pd.DataFrame({'time': time, 'signal': N*sig_t})
+            iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_t)), 'time': time, 'signal': N*sig_t})
 
             iczt_df["cal_type"] = data.cal_type.unique()[0]
             iczt_df["date"] = data.date.unique()[0]
@@ -601,7 +601,7 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True):
                     t2 = t
                 N = int(len(czt_data)/2)
                 time, sig_t = czt.freq2time(freqs, czt_data, t=t2)
-                td_data = pd.concat([pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
+                td_data = pd.concat([pd.DataFrame({'sample': np.arange(0,len(sig_t))}), pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
                 # td_data.columns = pd.MultiIndex.from_product([[p],['time','signal']])
                 td_data["pair"] = p
                 td_data["Tx"] = int(data.loc[data.pair.eq(p), 'Tx'].unique())
@@ -644,7 +644,7 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True):
                 t2 = t
             N = int(len(czt_data)/2)
             time, sig_t = czt.freq2time(freqs, czt_data, t=t2)
-            iczt_df = pd.DataFrame({'time': time, 'signal': N*sig_t})
+            iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_t)), 'time': time, 'signal': N*sig_t})
 
             iczt_df["cal_type"] = data.cal_type.unique()[0]
             iczt_df["date"] = data.date.unique()[0]
