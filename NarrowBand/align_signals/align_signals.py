@@ -1,8 +1,8 @@
 # Python 3.8.12
 # 2022-02-07
 
-# Version 1.0.1
-# Latest update 2022-02-17
+# Version 1.1.0
+# Latest update 2022-02-22
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -81,7 +81,7 @@ def find_delay_old(s1, s2, max_delay = None):
     """
     xcorr = signal.correlate(s1, s2, mode='full', method='auto')
     lags = signal.correlation_lags(np.size(s1), np.size(s2), mode='full')
-    delay = lags[np.argmax(xcorr)]
+    delay = -lags[np.argmax(xcorr)]
 
     if max_delay is None:
         max_delay = np.min([len(s1),len(s2)])
@@ -117,7 +117,7 @@ def find_delay_simple_max_peak(s1, max_delay = None, peak_center = 0):
         integer output delay, signifying lag by number of samples
     """
 
-    delay = np.argmax(np.abs(s1)) - int(peak_center)
+    delay = -np.argmax(np.abs(s1)) - int(peak_center)
 
     if max_delay is None:
         max_delay = np.min([len(s1)])
@@ -138,6 +138,9 @@ def find_delay(s1, s2, max_delay = None, out_xcorr = False):
 
     Inputs are expected to be 1-D arrays.
 
+    The function applies cross-correlation in both directions, which reduces delay calculation errors for signals 
+    with very small number of samples.
+
     Parameters
     ----------
     s1 : np.array-like
@@ -157,20 +160,19 @@ def find_delay(s1, s2, max_delay = None, out_xcorr = False):
         returned if out_xcorr is set to True
         cross-correlation result between arrays
     """
+    s1 = np.real_if_close(s1, tol = 10000)
+    s2 = np.real_if_close(s2, tol = 10000)
     xcorr1 = signal.correlate(s1, s2, mode='full', method='auto')
     lags1 = signal.correlation_lags(np.size(s1), np.size(s2), mode='full')
-    delay1 = lags1[np.argmax(xcorr1)]
+    delay1 = -lags1[np.argmax(xcorr1)]
 
     xcorr2 = signal.correlate(s2, s1, mode='full', method='auto')
     lags2 = signal.correlation_lags(np.size(s2), np.size(s1), mode='full')
-    delay2 = lags2[np.argmax(xcorr2)]
+    delay2 = -lags2[np.argmax(xcorr2)]
 
     if (np.abs(delay1) > np.abs(delay2)):
         delay = -delay2
         xcorr_out = xcorr2
-    elif (np.abs(delay1) == np.abs(delay2)):
-        delay = np.abs(delay1)
-        xcorr_out = xcorr1
     else:
         delay = delay1
         xcorr_out = xcorr1
