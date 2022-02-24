@@ -140,7 +140,7 @@ def generate_freq_array(freqs, max_freq = None, freq_step = None, min_freq = Non
         else:
             min_freq = freqs.min()
 
-    out_freqs = np.arange(min_freq, max_freq*fscale, step = freq_step*fscale)
+    out_freqs = np.arange(min_freq*fscale, max_freq*fscale, step = freq_step*fscale)
     return out_freqs
 
 def place_czt_value(czt_data, f, freqs, df, pair = None, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6):
@@ -273,7 +273,7 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
                             td_df_out.loc[(td_df.cal_type.eq(cal_type)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)), "signal"] = window * data.loc[:, "signal"]
         return td_df_out
 
-def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, conj_sym=True, auto_complex_plane = True, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False):
+def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, conj_sym=True, auto_complex_plane = False, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False):
     """Convert phantom data scan DataFrame into new Dataframe with reconstructed CZT signals.
 
     The new DataFrame contains columns for each antenna pair, for which there are two subcolumns: frequencies and simulated CZT signal.
@@ -403,16 +403,19 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
     df_out = pd.concat(processed, axis=0, ignore_index=True)
     return df_out
 
-def array_invert_to_time_domain(freqs, czt_data):
+def array_invert_to_time_domain(freqs, czt_data, t = None):
 
     if not check_symmetric(czt_data, tol=1e-8):
-        f, d = conjugate_symmetric(freqs, czt_data)
+        freqs, czt_data = conjugate_symmetric(freqs, czt_data)
+
+    if t == 'auto':
+        t =  t = auto_time_array(freqs, multiple=1)
 
     N = int(len(czt_data)/2)
-    time, sig_t = czt.freq2time(f, d)
+    time, sig_t = czt.freq2time(freqs, czt_data, t = t)
     return time, N*sig_t
 
-def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym=True, auto_complex_plane = True, 
+def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym=True, auto_complex_plane = False, 
                                 quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False):
     """Convert phantom data scan DataFrame into new Dataframe with converted ICZT signals.
 

@@ -1,8 +1,8 @@
 # Python 3.8.12
 # 2022-02-07
 
-# Version 1.1.0
-# Latest update 2022-02-22
+# Version 1.2.0
+# Latest update 2022-02-23
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -190,7 +190,7 @@ def find_delay(s1, s2, max_delay = None, out_xcorr = False):
     else:
         return delay
 
-def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False):
+def matlab_align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False):
     """Align two signals by delaying earliest signal.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
@@ -250,9 +250,9 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
             out1 = np.pad(out1, (delay, 0), mode='constant', constant_values = 0)
 
         else:
-            out1 = s1
+            out1 = np.pad(s1, (delay, 0), mode='constant', constant_values = 0)
             # prepending zeroes
-            out2 = np.pad(s2, (delay, 0), mode='constant', constant_values = 0)
+            out2 = s2
 
     else:
         if truncate:
@@ -260,12 +260,12 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
             out2 = s2[:delay]
 
             # prepending zeroes
-            out2 = np.pad(out2, ((-delay), 0), mode='constant', constant_values = 0)
+            out2 = np.pad(out2, (-delay, 0), mode='constant', constant_values = 0)
 
         else:
-            out2 = s2
+            out1 = s1
             # prepending zeroes
-            out1 = np.pad(s1, ((-delay), 0), mode='constant', constant_values = 0)
+            out2 = np.pad(s2, (-delay, 0), mode='constant', constant_values = 0)
 
     if output_delay:
         if out_xcorr:
@@ -276,3 +276,157 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
         return  out1, out2, xcorr_out
     else:
         return out1, out2
+
+def primary_align_signals(s1, s2_fixed, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False):
+    """Align two signals by delaying or anticipating first signal, second signal remains fixed.
+
+    Based on MATLAB alignsignals function, finding delay using cross-correlation.
+
+    Inputs are expected to be 1-D arrays.
+
+    If max_delay is None, the maximum tolerated delay is the smallest length of the input arrays.
+
+    Parameters
+    ----------
+    s1 : np.array-like
+        input array 1
+    s2 : np.array-like
+        input array 2
+    max_delay : int or None, optional
+        optional maximum tolerated delay, by default None
+    truncate : bool, optional (default True)
+        set to True to maintain size of input arrays (truncating and prepending/appending zeroes) or to False to implement delay by only prepending/appending with zeroes, by default True
+    output_delay : bool, optional
+        set to True to also return delay value, by default False
+    assigned_delay : int or None, optional
+        optional value for delay bypassing find_delay function, by default None
+    out_xcorr : bool, optional
+        set to True to output cross-correlation, by default False
+
+    Returns
+    -------
+    out1 : np.array
+        output aligned array 1
+    out2 : np.array
+        output unchanged array 2
+    delay : int, optional
+        returned if output_delay is set to True
+        integer output delay, signifying lag by number of samples
+    xcorr_out : np.array, optional
+        returned if out_xcorr is set to True
+        cross-correlation result between arrays
+    """
+    if isinstance(assigned_delay, int):
+        # use assigned_delay if it's an integer value
+        delay = assigned_delay
+    elif out_xcorr:
+        delay, xcorr_out = find_delay(s1, s2_fixed, max_delay = max_delay, out_xcorr = out_xcorr)
+    else:
+        delay = find_delay(s1, s2_fixed, max_delay = max_delay)
+
+    if delay == 0:
+        out1 = s1
+        out2 = s2_fixed
+
+    elif delay > 0:
+        if truncate:
+            out1 = s1[:-delay]
+            # prepending zeroes
+            out1 = np.pad(out1, (delay, 0), mode='constant', constant_values = 0)
+            out2 = s2_fixed
+
+        else:
+            # appending zeroes
+            out1 = np.pad(s1, (delay, 0), mode='constant', constant_values = 0)
+            out2 = s2_fixed
+
+    else:
+        if truncate:
+            out1 = s1[-delay:]
+            # appending zeroes
+            out1 = np.pad(out1, (0, -delay), mode='constant', constant_values = 0)
+            out2 = s2_fixed
+
+        else:
+            # appending zeroes
+            out1 = np.pad(s1, (0, -delay), mode='constant', constant_values = 0)
+            out2 = s2_fixed
+
+    if output_delay:
+        if out_xcorr:
+            return  out1, out2, delay, xcorr_out
+        else:
+            return  out1, out2, delay
+    elif out_xcorr:
+        return  out1, out2, xcorr_out
+    else:
+        return out1, out2
+
+def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False, method = 'primary'):
+    """Align two signals.
+
+    Based on MATLAB alignsignals function, finding delay using cross-correlation.
+
+    Default method is 'primary', which keeps s2 fixed, prepending or appending s1 with zeroes. 
+
+    Other option is 'matlab', which delays earliest signal (either s1 or s2), only prepending zeroes.
+
+    Inputs are expected to be 1-D arrays.
+
+    If max_delay is None, the maximum tolerated delay is the smallest length of the input arrays.
+
+    Parameters
+    ----------
+    s1 : np.array-like
+        input array 1
+    s2 : np.array-like
+        input array 2
+    max_delay : int or None, optional
+        optional maximum tolerated delay, by default None
+    truncate : bool, optional
+        set to True to maintain size of input arrays (truncating and prepending zeroes) or to False to implement delay by prepending with zeroes, by default True
+    output_delay : bool, optional
+        set to True to also return delay value, by default False
+    assigned_delay : int or None, optional
+        optional value for delay bypassing find_delay function, by default None
+    out_xcorr : bool, optional
+        set to True to output cross-correlation, by default False
+    method: str, optional
+        align signals method, by default 'primary'
+        available methods:
+            'matlab': MATLAB method, always delays earliest signal
+            'primary' or 'fixed': only alters s1, keeping s2 fixed
+
+    Returns
+    -------
+    out1 : np.array
+        output aligned array 1
+    out2 : np.array
+        output aligned array 2
+    delay : int, optional
+        returned if output_delay is set to True
+        integer output delay, signifying lag by number of samples
+    xcorr_out : np.array, optional
+        returned if out_xcorr is set to True
+        cross-correlation result between arrays
+    """
+
+    if (method.casefold() == 'primary') or (method.casefold() == 'fixed'):
+        output = primary_align_signals(s1, s2_fixed = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, out_xcorr = out_xcorr)
+    elif (method.casefold() == 'matlab'):
+        output = matlab_align_signals(s1, s2_fixed = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, out_xcorr = out_xcorr)
+    else:
+        print("Align Signals method not available. Please select 'primary' or 'matlab'.")
+        return 0
+
+    # output[0] = out1, output[1] = out2, output[2] = delay, output[3] = xcorr_out
+    if output_delay:
+        if out_xcorr:
+            return  output[0], output[1], output[2], output[3]
+        else:
+            return  output[0], output[1], output[2]
+    elif out_xcorr:
+        # for this case output[2] = xcorr_out
+        return  output[0], output[1], output[2]
+    else:
+        return output[0], output[1]
