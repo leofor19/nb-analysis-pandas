@@ -7,11 +7,17 @@
  Description:
         Module for performing data processing on Pandas DataFrames for the ultrawideband system.
 
+Classes::
+
+        Scan_settings : Class for providing phantom scan info.
+
 Functions::
 
         uwb_data_read : reads ultrawideband system data file and returns dataframe or numpy array.
 
-        data_read : reads narrow band system data file and returns data and time/frequency arrays plus number of samples and sampling rate.
+        uwb_data_read2pandas : reads ultrawideband system data file and generates dataframe "scan data set" files from PicoScope .txt files, either saves it to a parquet file or outputs the dataframe.
+
+        uwb_scan_folder_sweep : finds all phantom measurement .txt files in a given directory path. used for 
 
 Written by: Leonardo Fortaleza
 """
