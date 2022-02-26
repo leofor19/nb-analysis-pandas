@@ -758,14 +758,14 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
         sub-folder for JSON files of converted data (if correction != 1), by default "Converted/"
     decimals : int, optional
         number of decimals cases for np.arounding values, in particular after conversion, by default 2
-    save_format: str
+    save_format: str, optional
         target file format (either "parquet" or "csv"), by default "parquet"
     parquet_engine: str, optional
         Parquet reader library to use, by default 'pyarrow'
-        Options include: ‘auto’, ‘fastparquet’, ‘pyarrow’.
-        If ‘auto’, then the option io.parquet.engine is used.
-        The default io.parquet.engine behavior is to try ‘pyarrow’,
-        falling back to ‘fastparquet’ if ‘pyarrow’ is unavailable.
+        Options include: 'auto', 'fastparquet', 'pyarrow'.
+        If 'auto', then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try 'pyarrow',
+        falling back to 'fastparquet' if 'pyarrow' is unavailable.
     """
 
     if not isinstance(dates, list):
@@ -1262,6 +1262,12 @@ def cal_data_pd_compile(date, main_path = "{}/OneDrive - McGill University/Docum
         sub-folder for files of converted data, by default "Conv/"
     file_format: str, optional
         file format for dataframes, by default "parquet"
+    parquet_engine: str, optional
+        Parquet reader library to use, by default 'pyarrow'
+        Options include: 'auto', 'fastparquet', 'pyarrow'.
+        If 'auto', then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try 'pyarrow',
+        falling back to 'fastparquet' if 'pyarrow' is unavailable.
     is_recursive: bool, optional
         boolean for recursive folder sweep, by default "False"
     """
@@ -1339,8 +1345,14 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
         sub-folder for JSON files of converted data (if correction != 1), by default "Converted/"
     decimals : int, optional
         number of decimals cases for np.arounding values, in particular after conversion, by default 2
-    save_format: str
+    save_format: str, optional
         target file format (either "parquet" or "csv"), by default "parquet"
+    parquet_engine: str, optional
+        Parquet reader library to use, by default 'pyarrow'
+        Options include: 'auto', 'fastparquet', 'pyarrow'.
+        If 'auto', then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try 'pyarrow',
+        falling back to 'fastparquet' if 'pyarrow' is unavailable.
     """
 
     # output file paths generation
@@ -1809,14 +1821,14 @@ def cal4_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
         sub-folder for JSON files of converted data (if correction != 1), by default "Converted/"
     decimals : int, optional
         number of decimals cases for np.arounding values, in particular after conversion, by default 2
-    save_format: str
+    save_format: str, optional
         target file format (either "parquet" or "csv"), by default "parquet"
     parquet_engine: str, optional
         Parquet reader library to use, by default 'pyarrow'
-        Options include: ‘auto’, ‘fastparquet’, ‘pyarrow’.
-        If ‘auto’, then the option io.parquet.engine is used.
-        The default io.parquet.engine behavior is to try ‘pyarrow’,
-        falling back to ‘fastparquet’ if ‘pyarrow’ is unavailable.
+        Options include: 'auto', 'fastparquet', 'pyarrow'.
+        If 'auto', then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try 'pyarrow',
+        falling back to 'fastparquet' if 'pyarrow' is unavailable.
     """
 
     if not isinstance(dates, list):
@@ -1872,10 +1884,10 @@ def cal4_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Document
         target file format (either "parquet" or "csv"), by default "parquet"
     parquet_engine: str, optional
         Parquet reader library to use, by default 'pyarrow'
-        Options include: ‘auto’, ‘fastparquet’, ‘pyarrow’.
-        If ‘auto’, then the option io.parquet.engine is used.
-        The default io.parquet.engine behavior is to try ‘pyarrow’,
-        falling back to ‘fastparquet’ if ‘pyarrow’ is unavailable.
+        Options include: 'auto', 'fastparquet', 'pyarrow'.
+        If 'auto', then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try 'pyarrow',
+        falling back to 'fastparquet' if 'pyarrow' is unavailable.
     """
 
     # Calibration type 4 - uses data_pd_agg()
@@ -1925,8 +1937,14 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
         sub-folder for JSON files of converted data (if correction != 1), by default "Converted/"
     decimals : int, optional
         number of decimals cases for np.arounding values, in particular after conversion, by default 2
-    save_format: str
+    save_format: str, optional
         target file format (either "parquet" or "csv"), by default "parquet"
+    parquet_engine: str, optional
+        Parquet reader library to use, by default 'pyarrow'
+        Options include: 'auto', 'fastparquet', 'pyarrow'.
+        If 'auto', then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try 'pyarrow',
+        falling back to 'fastparquet' if 'pyarrow' is unavailable.
     cal_option: int, optional
         if different than 0, appends "Calibration Type ##" to start of filenames, by default 0
         (for use with calibration type 4)
@@ -2282,8 +2300,17 @@ def data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents McG
         sub-folder for JSON files of converted data (if correction != 1), by default "Converted/"
     decimals : int, optional
         number of decimals cases for np.arounding values, in particular after conversion, by default 2
-    save_format: str
+    save_format: str, optional
         target file format (either "parquet" or "csv"), by default "parquet"
+    parquet_engine: str, optional
+        Parquet reader library to use, by default 'pyarrow'
+        Options include: 'auto', 'fastparquet', 'pyarrow'.
+        If 'auto', then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try 'pyarrow',
+        falling back to 'fastparquet' if 'pyarrow' is unavailable.
+    cal_option: int, optional
+        if different than 0, appends "Calibration Type ##" to start of filenames, by default 0
+        (for use with calibration type 4)
     """
 
     #if isinstance(date, list):
