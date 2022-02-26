@@ -30,25 +30,79 @@ import pandas as pd
 from tqdm.notebook import tqdm # when using Jupyter Notebook
 
 class Scan_settings:
-    def __init__(self, phantom = 1, angle = 0, plug = 2, rep = 1, iter = 1, sample_rate = 160e9, date = '2020-01-24', attRF = 0, HP_amp = 35, LNA_amp = 25, sig_names = ['transmission', 'signal'],
-                    obs = ''):
+    """Class for providing phantom scan info.
 
-        self.phantom = phantom
-        self.angle = angle
-        self.plug = plug
-        self.rep = rep
-        self.iter = iter
-        self.sample_rate = sample_rate
+    Can be initiated by performing:
 
-        # default date is '2020-01-24'
-        self.date = date
+    s = Scan_settings(phantom = 1, angle = 0, plug = 2, rep = 1, iter = 1, sampling_rate = 160e9, date = '2020-01-24', attRF = 0, HP_amp = 35, LNA_amp = 25, sig_names = ['transmission', 'signal'],
+                    obs = '')
 
-        self.attRF = attRF
-        self.HP_amp = HP_amp
-        self.LNA_amp = LNA_amp
+    Defaults include:
+        phantom = 1
+        angle = 0
+        plug = 2
+        rep = 1
+        iter = 1
+        sampling_rate = 160e9
+        date = '2020-01-24'
+        att = 0 # [dB]
+        HP_amp = 35 # [dB]
+        LNA_amp = 25 # [dB]
+        sig_names = ['transmission', 'signal'] # (list of column names)
+        obs = '' # (string for notes and further info)
+    """
+    def __init__(self, **kwargs):
 
-        self.sig_names = sig_names
-        self.obs = obs
+        # Predefine attributes with default values
+        self.phantom = 1
+        self.angle = 0
+        self.plug = 2
+        self.rep = 1
+        self.iter = 1
+        self.sampling_rate = 160e9
+
+        self.date = '2020-01-24'
+
+        self.attRF = 0
+        self.HP_amp = 35
+        self.LNA_amp = 25
+
+        self.sig_names = ['transmission', 'signal']
+        self.obs = ''
+
+        self.update_values(kwargs)
+
+    def update_values(self, **kwargs):
+        """Update class with keyword arguments.
+
+        Checks for unexpected arguments, allowing them but displaying a warning.
+
+        Raises
+        ------
+        Warning
+           When unexpected keyword arguments are provided. Settings are applied but might be unused.
+        """
+        # get a list of all predefined values directly from __dict__
+        allowed_keys = list(self.__dict__.keys())
+
+        # # Update __dict__ but only for keys that have been predefined 
+        # # (silently ignore others)
+        # self.__dict__.update((key, value) for key, value in kwargs.items() 
+        #                      if key in allowed_keys)
+
+        # # To NOT silently ignore rejected keys
+        # rejected_keys = set(kwargs.keys()) - set(allowed_keys)
+        # if rejected_keys:
+        #     raise ValueError("Invalid arguments in constructor:{}".format(rejected_keys))
+
+        # Update __dict__  for any keys, but provides Warning
+
+        # To NOT silently ignore rejected keys
+        rejected_keys = set(kwargs.keys()) - set(allowed_keys)
+        if rejected_keys:
+            raise Warning("Unexpected arguments in constructor Scan_settings:{}. Settings were applied but might be unused.".format(rejected_keys))
+        self.__dict__.update(kwargs)
+
 
 def uwb_data_read(file_name, output_numpy = False, col_names = ['transmission', 'signal']):
     """Read ultrawideband system data file and return data array.
@@ -109,7 +163,7 @@ def uwb_scan_folder_sweep(main_path):
     return path_list, meta_index
 
 def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/Documents McGill/Data/UWB/".format(os.environ['USERPROFILE']),
-                            processed_path = "Processed/DF/", settings = None, save_file = True, save_format="parquet", parquet_engine= 'pyarrow'):
+                            processed_path = "Processed/DF/", settings = None, save_file = True, save_format="parquet", parquet_engine= 'pyarrow', **kwargs):
     """Generate Pandas DataFrame "scan data set" files from PicoScope .txt files.
 
     In order to gather metadata, requires prior manual instancing of class Scan_settings, otherwise uses default values for Phantom, Angle, Plug, etc. 
@@ -128,6 +182,7 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
         final location will be out_path + processed_path
     settings : class Scan_settings, optional
         receives Scan_settings class file, by default None
+        kwargs apply to this class file.
         if None is provided, defaults include:
             phantom = 1
             angle = 0
@@ -136,9 +191,9 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
             iter = 1
             sample_rate = 160e9
             date = '2020-01-24'
-            att = 0 [dB]
-            HP_amp = 35 [dB]
-            LNA_amp = 25 [dB]
+            att = 0 # [dB]
+            HP_amp = 35 # [dB]
+            LNA_amp = 25 # [dB]
     save_file : bool, optional
         set to False to output DataFrame instead of saving to file, by default True
     save_format: str, optional
@@ -149,6 +204,8 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
         If 'auto', then the option io.parquet.engine is used.
         The default io.parquet.engine behavior is to try 'pyarrow',
         falling back to 'fastparquet' if 'pyarrow' is unavailable.
+    **kwargs : dict, optional
+        keyword arguments to apply to settings class (see 'settings' input above).
 
     Returns (optional)
     ----------
@@ -157,7 +214,9 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
         in case save_file is set to False, then outputs the resulting df
     """
     if settings is None:
-        settings = Scan_settings()
+        settings = Scan_settings(kwargs)
+    elif kwargs:
+        settings.update_values(kwargs)
 
     path_list, meta_index = uwb_scan_folder_sweep(main_path)
 
@@ -187,7 +246,7 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
     df["HP_amp"] = settings.HP_amp
     df["LNA_amp"] = settings.LNA_amp
 
-    df['samp_rate'] = settings.sample_rate
+    df['samp_rate'] = settings.sampling_rate
     df['time'] = df['sample'] * (1/settings.sample_rate)
     df["obs"] = settings.obs
 
