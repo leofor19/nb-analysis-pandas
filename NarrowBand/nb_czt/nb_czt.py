@@ -1,8 +1,8 @@
 # Python 3.8.12
 # 2021-12-09
 
-# Version 1.0.2
-# Latest update 2022-02-01
+# Version 1.0.3
+# Latest update 2022-03-04
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -142,6 +142,73 @@ def generate_freq_array(freqs, max_freq = None, freq_step = None, min_freq = Non
 
     out_freqs = np.arange(min_freq*fscale, max_freq*fscale, step = freq_step*fscale)
     return out_freqs
+
+def auto_time_array(f, periods = 1, step_division = 1, start = None, max_time = None, tstep = None):
+    """Generate default ifft time array.
+
+    When setting start, max_time or tstep as None, uses default FFT time array as basis by performing [np.fft.fftshift(np.fft.fftfreq(nf, df/step_division))].
+
+    For more automated functionality, only alter periods and step_division.
+
+    Function applies np.arange for periods different from 1 and for cases with user-defined start, max_time or tstep.
+
+    Parameters
+    ----------
+    f : np.array-like
+        input array with frequencies
+    periods : int, optional
+        number of periods to use, by default 1
+    step_division : int, optional
+        _description_, by default 1
+    start : None or float, optional
+        initial time position, by default None
+    max_time : None or float, optional
+        final time position, by default None
+    tstep : None or float, optional
+        time step, by default None
+
+    Returns
+    -------
+    t : np.array
+        output time array for converting signal to Time Domain
+    """
+
+    if f[0] < 0:
+        # Input frequency array
+        nf = int(len(f)/2)
+        fspan = f[-1] - 0
+        df = fspan / (nf - 1)  # more accurate than f[1] - f[0]
+    else:
+        # Input frequency array
+        nf = len(f)
+        fspan = f[-1] - f[0]
+        df = fspan / (nf - 1)  # more accurate than f[1] - f[0]
+
+    # Output time array (from cbz.freq2time())
+    # Default to FFT time sweep
+    if (tstep is None) or (start is None) or (max_time is None) :
+        t = np.fft.fftshift(np.fft.fftfreq(nf, df/step_division))
+
+    # adjustments to default IFFT array
+    if (start is not None) or (max_time is not None) or (periods != 1):
+        periods = np.around(periods)
+        if tstep is None:
+            tstep = (t[-1] - t[0]) / (len(t))
+        if start is None:
+            start = t[0] * periods
+        if max_time is None:
+            max_time = t[-1] * periods
+
+        t = np.arange(start, max_time, step = tstep)
+
+    # # final time is chosen *multiple* divided by max frequency
+    # max_time = multiple / (8*df)
+
+    # # time step is 1 divided by *multiple* times the frequency step
+    # tstep = 1/(4*multiple*f[-1])
+
+    # t = np.arange(start, max_time, step = tstep)
+    return t
 
 def place_czt_value(czt_data, f, freqs, df, pair = None, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6):
     """Place czt signal complex value in correct position in array.
@@ -770,32 +837,6 @@ def conjugate_symmetric_fft_format(x, y):
     y_out = np.concatenate((y[n:], y[0:n]))
 
     return x_out, y_out
-
-def auto_time_array(f, start = 0, multiple=1):
-
-    if f[0] < 0:
-        # Input frequency array
-        nf = int(len(f)/2)
-        fspan = f[-1] - 0
-        df = fspan / (nf - 1)  # more accurate than f[1] - f[0]
-    else:
-        # Input frequency array
-        nf = len(f)
-        fspan = f[-1] - f[0]
-        df = fspan / (nf - 1)  # more accurate than f[1] - f[0]
-
-    # Output time array (from cbz.freq2time())
-    # Default to FFT time sweep
-    t = np.fft.fftshift(np.fft.fftfreq(nf, df/multiple))
-
-    # # final time is chosen *multiple* divided by max frequency
-    # max_time = multiple / (8*df)
-
-    # # time step is 1 divided by *multiple* times the frequency step
-    # tstep = 1/(4*multiple*f[-1])
-
-    # t = np.arange(start, max_time, step = tstep)
-    return t
 
 def check_symmetric(a, tol=1e-8):
     """Check if array is conjugate symmetric.
