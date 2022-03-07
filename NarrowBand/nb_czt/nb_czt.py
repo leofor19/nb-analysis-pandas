@@ -1,8 +1,8 @@
 # Python 3.8.12
 # 2021-12-09
 
-# Version 1.0.3
-# Latest update 2022-03-04
+# Version 1.0.4
+# Latest update 2022-03-07
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -483,7 +483,7 @@ def array_invert_to_time_domain(freqs, czt_data, t = None):
     return time, N*sig_t
 
 def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym=True, auto_complex_plane = False, 
-                                quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False):
+                                quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False, periods = 1, step_division = 1):
     """Convert phantom data scan DataFrame into new Dataframe with converted ICZT signals.
 
     The new DataFrame contains columns for each antenna pair, for which there are two subcolumns: frequencies and converted ICZT signal.
@@ -520,6 +520,10 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
         scale for frequencies, by default 1e6 (MHz)
     verbose: bool, optional
         set to True to print quadrant, I-ch and Q-ch, by default False
+    periods : int, optional
+        number of periods to use, by default 1
+    step_division : int, optional
+        _description_, by default 1
 
     Returns
     -------
@@ -553,7 +557,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
                 else:
                     freqs_out = freqs
                 if t == 'auto':
-                    t2 = auto_time_array(freqs_out, start = 0, multiple=1)
+                    t2 = auto_time_array(freqs_out, periods = periods, step_division = step_division, start = 0)
                 else:
                     t2 = t
                 N = int(len(czt_data)/2)
@@ -626,7 +630,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
     df_out = pd.concat(processed, axis=0, ignore_index=True)
     return df_out
 
-def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True):
+def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True, periods = 1, step_division = 1):
     """Convert CZT DataFrame into new Dataframe with converted ICZT signals.
 
     The new DataFrame contains columns for each antenna pair, for which there are two subcolumns: frequencies and converted ICZT signal.
@@ -641,6 +645,10 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True):
         time for output signal, optional, defaults to standard FFT time sweep
     conj_sym: bool, optional (default True)
         set to True to convert FD signal to conjugate symmetrical (to force real signal), by default True
+    periods : int, optional
+        number of periods to use, by default 1
+    step_division : int, optional
+        _description_, by default 1
 
     Returns
     -------
@@ -666,7 +674,7 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True):
                     freqs = data.freq.to_numpy()
                     czt_data = data.czt.to_numpy()
                 if t == 'auto':
-                    t2 = auto_time_array(freqs*1e6, start = 0, multiple=1)
+                    t2 = auto_time_array(freqs*1e6, periods = periods, step_division = step_division, start = 0)
                 else:
                     t2 = t
                 N = int(len(czt_data)/2)

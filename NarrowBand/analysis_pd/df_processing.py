@@ -1,8 +1,8 @@
 # Python 3.8
 # 2021-03-05
 
-# Version 1.2.6
-# Latest update 2021-11-26
+# Version 1.2.7
+# Latest update 2022-03-07
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -575,8 +575,16 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
 
                 df_list[-1].loc[:,'pair'] = pd.Categorical(df_list[-1].loc[:,"pair"], ordered=True, categories=sorted_pairs)
 
+                # checking the x-axis column
+                if df_list[-1].columns.str.contains('time', case=False, na=False).all():
+                    xlabel = 'time'
+                elif df_list[-1].columns.str.contains('sample', case=False, na=False).all():
+                    xlabel = 'sample'
+                else:
+                    xlabel = 'freq'
+
                 # verification of existance of values to be sorted in dataframe, maintaining sorting order
-                sort_list = ["phantom", "angle", "plug", "attLO", "attRF", "date", "rep", "iter", "pair", "freq"]
+                sort_list = ["phantom", "angle", "plug", "attLO", "attRF", "date", "rep", "iter", "pair", xlabel]
                 intersection = [x for x in sort_list if x in frozenset(df_list[-1].columns)]
 
                 df_list[-1] = df_list[-1].sort_values(intersection, inplace=False, ignore_index=True).copy()
@@ -649,8 +657,16 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
 
                 df_list[-1].loc[:,'pair'] = pd.Categorical(df_list[-1].loc[:,"pair"], ordered=True, categories=sorted_pairs)
 
+                # checking the x-axis column
+                if df_list[-1].columns.str.contains('time', case=False, na=False).all():
+                    xlabel = 'time'
+                elif df_list[-1].columns.str.contains('sample', case=False, na=False).all():
+                    xlabel = 'sample'
+                else:
+                    xlabel = 'freq'
+
                 # verification of existance of values to be sorted in dataframe, maintaining sorting order
-                sort_list = ["phantom", "angle", "plug", "attLO", "attRF", "date", "rep", "iter", "pair", "freq"]
+                sort_list = ["phantom", "angle", "plug", "attLO", "attRF", "date", "rep", "iter", "pair", xlabel]
                 intersection = [x for x in sort_list if x in frozenset(df_list[-1].columns)]
 
                 df_list[-1] = df_list[-1].sort_values(intersection, inplace=False, ignore_index=True).copy()
@@ -2604,7 +2620,7 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
             if "voltage_unit" in df.columns:
                 #vunit = data.voltage_unit.unique().tolist()[0]
                 # remove "voltage" columns, only digital used to reduce uncertainty
-                df = df.loc[:,~df.columns.str.contains('^(?=.*voltage)(?!.*mag).*', case=False, na=False)]
+                df = df.loc[:,~df.columns.str.contains('^(?=.*voltage)(?!.*mag)(?!.*phase).*', case=False, na=False)]
             df = df.loc[:,~df.columns.str.contains('subject', case=False, na=False)]
             df = df.loc[:,~df.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
             clutter = avg_trace_clutter(df, progress_bar = False, center = center)
@@ -2690,8 +2706,8 @@ def avg_trace_clutter(df, progress_bar = True, center='mean'):
             data.drop("index", axis=1, inplace=True)
         if "voltage_unit" in data.columns:
             #vunit = data.voltage_unit.unique().tolist()[0]
-            # remove "voltage" columns, only digital used to reduce uncertainty
-            data = data.loc[:,~data.columns.str.contains('s(?=.*voltage)(?!.*mag).*', case=False, na=False)]
+            # remove "voltage_mag" or "voltage_phase" columns
+            data = data.loc[:,~data.columns.str.contains('(?=.*voltage)(?=.*mag|.*phase).*', case=False, na=False)]
         data = data.loc[:,~data.columns.str.contains('subject', case=False, na=False)]
         data = data.loc[:,~data.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
         c = data.drop(["Tx","Rx"], axis = 1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", "freq"], observed=True).agg([agg_center])
