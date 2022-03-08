@@ -159,7 +159,7 @@ def auto_time_array(f, periods = 1, step_division = 1, start = None, max_time = 
     periods : int, optional
         number of periods to use, by default 1
     step_division : int, optional
-        _description_, by default 1
+        integer to divide time step, by default 1
     start : None or float, optional
         initial time position, by default None
     max_time : None or float, optional
@@ -476,7 +476,7 @@ def array_invert_to_time_domain(freqs, czt_data, t = None):
         freqs, czt_data = conjugate_symmetric(freqs, czt_data)
 
     if t == 'auto':
-        t =  t = auto_time_array(freqs, multiple=1)
+        t =  t = auto_time_array(freqs, step_division = 1)
 
     N = int(len(czt_data)/2)
     time, sig_t = czt.freq2time(freqs, czt_data, t = t)
@@ -523,7 +523,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
     periods : int, optional
         number of periods to use, by default 1
     step_division : int, optional
-        _description_, by default 1
+        integer to divide time step, by default 1
 
     Returns
     -------
@@ -557,7 +557,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
                 else:
                     freqs_out = freqs
                 if t == 'auto':
-                    t2 = auto_time_array(freqs_out, periods = periods, step_division = step_division, start = 0)
+                    t2 = auto_time_array(freqs_out, periods = periods, step_division = step_division, start = None)
                 else:
                     t2 = t
                 N = int(len(czt_data)/2)
@@ -606,7 +606,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
             else:
                 freqs_out = freqs
             if t == 'auto':
-                t2 = auto_time_array(freqs_out, start = 0, multiple=1)
+                t2 = auto_time_array(freqs_out, periods = periods, step_division = step_division, start = None)
             else:
                 t2 = t
             N = int(len(czt_data)/2)
@@ -648,7 +648,7 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True, periods = 1, s
     periods : int, optional
         number of periods to use, by default 1
     step_division : int, optional
-        _description_, by default 1
+        integer to divide time step, by default 1
 
     Returns
     -------
@@ -674,7 +674,7 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True, periods = 1, s
                     freqs = data.freq.to_numpy()
                     czt_data = data.czt.to_numpy()
                 if t == 'auto':
-                    t2 = auto_time_array(freqs*1e6, periods = periods, step_division = step_division, start = 0)
+                    t2 = auto_time_array(freqs*1e6, periods = periods, step_division = step_division, start = None)
                 else:
                     t2 = t
                 N = int(len(czt_data)/2)
@@ -717,7 +717,7 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True, periods = 1, s
                 freqs = data.freq.to_numpy()
                 czt_data = data.czt.to_numpy()
             if t == 'auto':
-                    t2 = auto_time_array(freqs, start = 0, multiple=1)
+                    t2 = auto_time_array(freqs, periods = periods, step_division = step_division, start = None)
             else:
                 t2 = t
             N = int(len(czt_data)/2)

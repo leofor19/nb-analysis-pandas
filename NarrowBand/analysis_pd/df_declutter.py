@@ -108,7 +108,7 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
         out_path = "".join((main_path,d,"/",processed_path,"Decluttered/{0} Phantom Set Decluttered.parquet".format(d)))
 
         df_list = dfproc.df_collect(main_paths, is_recursive=is_recursive, file_format=file_format, columns=columns)
-        if ~df_list[0].columns.str.contains('distances', case=False, na=False).all():
+        if ~df_list[0].columns.str.contains('distances', case=False, na=False).any():
             df_list = dfproc.dfsort_pairs(df_list, reference_point = "tumor", sort_type = "between_antennas", decimals = 4, out_distances = True)
 
         decl_list = []
@@ -183,9 +183,9 @@ def subtract_clutter(df, clutter):
         output DataFrame after clutter subtraction
     """
     # checking the x-axis column
-    if df.columns.str.contains('time', case=False, na=False).all():
+    if df.columns.str.contains('time', case=False, na=False).any():
         xlabel = 'time'
-    elif df.columns.str.contains('sample', case=False, na=False).all():
+    elif df.columns.str.contains('sample', case=False, na=False).any():
         xlabel = 'sample'
     else:
         xlabel = 'freq'
@@ -194,9 +194,13 @@ def subtract_clutter(df, clutter):
     df = df.progress_apply(lambda x: uncategorize(x), axis=1)
     if "index" in df.columns:
         df.drop("index", axis=1, inplace=True)
+    if "level_0" in df.columns:
+        df.drop("level_0", axis=1, inplace=True)
     if "voltage_unit" in df.columns:
         #vunit = data.voltage_unit.unique().tolist()[0]
         # remove "voltage_mag" or "voltage_phase" columns
+        vunit = df.voltage_unit.head(1).item()
+        df.drop('voltage_unit', axis = 1, inplace = True)
         df = df.loc[:,~df.columns.str.contains('^(?=.*voltage)(?=.*mag|.*phase).*', case=False, na=False)]
     df = df.loc[:,~df.columns.str.contains('subject', case=False, na=False)]
     df = df.loc[:,~df.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
@@ -210,10 +214,12 @@ def subtract_clutter(df, clutter):
     df = df.subtract(clutter, fill_value=0, axis = 0).round(keys).reset_index()
 
     df["digital_unit"] = dunit
+    if vunit:
+        df["voltage_unit"] = vunit
 
     return df
 
-def avg_trace_clutter(df, progress_bar = True, center='mean'):
+def avg_trace_clutter(df, progress_bar = True, center='mean', out_as_list = False):
     """Calculate average trace cluttter per distance between antennas and per frequency.
 
     Calculates average singal per frequency/time for antenna pairs with a same distance (assuming the clutter is constant for such pairs).
@@ -228,6 +234,8 @@ def avg_trace_clutter(df, progress_bar = True, center='mean'):
         set to True to display tqdm progress bar, by default True
     center: str, optional
         center tendency option between 'mean' or 'median', by default 'mean'
+    out_as_list: bool, optional
+        set to True to output list, otherwise concatenate back to DataFrame, by default False
 
     Returns
     -------
@@ -238,7 +246,7 @@ def avg_trace_clutter(df, progress_bar = True, center='mean'):
     if not isinstance(df, list):
         df = [df]
 
-    if ~df[0].columns.str.contains('distances', case=False, na=False).all():
+    if ~df[0].columns.str.contains('distances', case=False, na=False).any():
         df = dfproc.dfsort_pairs(df, reference_point = "tumor", sort_type = "between_antennas", decimals = 4, out_distances = True)
 
     if center == 'median':
@@ -252,6 +260,8 @@ def avg_trace_clutter(df, progress_bar = True, center='mean'):
         data = data.progress_apply(lambda x: uncategorize(x), axis=1)
         if "index" in data.columns:
             data.drop("index", axis=1, inplace=True)
+        if "level_0" in data.columns:
+            data.drop("level_0", axis=1, inplace=True)
         if "voltage_unit" in data.columns:
             #vunit = data.voltage_unit.unique().tolist()[0]
             # remove "voltage_mag" or "voltage_phase" columns
@@ -260,9 +270,9 @@ def avg_trace_clutter(df, progress_bar = True, center='mean'):
         data = data.loc[:,~data.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
 
         # checking the x-axis column
-        if data.columns.str.contains('time', case=False, na=False).all():
+        if data.columns.str.contains('time', case=False, na=False).any():
             xlabel = 'time'
-        elif data.columns.str.contains('sample', case=False, na=False).all():
+        elif data.columns.str.contains('sample', case=False, na=False).any():
             xlabel = 'sample'
         else:
             xlabel = 'freq'
@@ -280,5 +290,7 @@ def avg_trace_clutter(df, progress_bar = True, center='mean'):
 
     if len(clutter) == 1:
         clutter = clutter[0]
+    elif ~out_as_list:
+        clutter = pd.concat(clutter, axis = 0)
 
     return clutter

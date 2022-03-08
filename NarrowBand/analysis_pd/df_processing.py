@@ -517,7 +517,7 @@ def allpairs2list2(df, select_ref = 1):
 
     return full_pairs
 
-def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals = 4, out_distances = False):
+def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals = 4, out_distances = False, out_as_list = True):
     """Return list of dataframes with antenna pair column as categorical, sorted by distance to reference point.
 
     The input dataframe is split into a list of dataframes, according to phantom and angle.
@@ -540,11 +540,14 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
         number of decimals for rounding
     out_distances: bool, optional
         set to True to provide optional return column with distances, by default False
+    out_as_list: bool, optional
+        set to True to output list, otherwise concatenate back to DataFrame, by default True
 
     Returns
     ----------
-    df_list: list of DataFrame
-        list with DataFrames split by phantom, angle with the "pair" column sorted
+    df_list: list of DataFrame or DataFrame
+        list with DataFrames split by phantom, angle with the "pair" column sorted (when out_as_list is True)
+        or concatenated DataFrame
     """
 
     df_list = list([])
@@ -589,9 +592,12 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
 
                 df_list[-1] = df_list[-1].sort_values(intersection, inplace=False, ignore_index=True).copy()
 
+    if ~out_as_list:
+        df_list = pd.concat(df_list, axis = 0)
+
     return df_list
 
-def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance", decimals = 4, out_distances = False, select_ref = 1):
+def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance", decimals = 4, out_distances = False, select_ref = 1, out_as_list = True):
     """Return list of dataframes with antenna pair column as categorical, sorted by distance to reference point.
 
     The input dataframe is split into a list of dataframes, according to phantom and angle.
@@ -619,11 +625,14 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
     select_ref: int
         which element of the comparison pairs to use as reference for sorting (1 or 2), by default 1
         this is NOT the phantom number, but refers to the compared pair (column on DataFrame), usually both are the same
+    out_as_list: bool, optional
+        set to True to output list, otherwise concatenate back to DataFrame, by default True
 
     Returns
     ----------
-    df_list: list of DataFrame
-        list with DataFrames split by phantom, angle with the "pair" column sorted
+    df_list: list of DataFrame or DataFrame
+        list with DataFrames split by phantom, angle with the "pair" column sorted (when out_as_list is True)
+        or concatenated DataFrame
     """
 
     p = "".join(("phantom_",f"{select_ref}"))
@@ -670,6 +679,9 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
                 intersection = [x for x in sort_list if x in frozenset(df_list[-1].columns)]
 
                 df_list[-1] = df_list[-1].sort_values(intersection, inplace=False, ignore_index=True).copy()
+
+    if ~out_as_list:
+        df_list = pd.concat(df_list, axis = 0)
 
     return df_list
 
