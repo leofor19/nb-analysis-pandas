@@ -219,7 +219,10 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
                                                                                                         truncate=truncate, output_delay=False, assigned_delay=None, method = 'matlab')
     elif ("pair" in df1.columns):
         cols1 = ph_cols + [sort_col]
-        cols2 = cal_cols + [sort_col]
+        if "cal_type" in df2.columns:
+            cols2 = cal_cols + [sort_col]
+        else:
+            cols2 = [sort_col]
         df1 = df1.sort_values(by=cols1)
         df2 = df2.sort_values(by=cols2)
         df1 = df1.reset_index(drop = False)
@@ -230,7 +233,10 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
             df1.loc[df1.pair.eq(p), column], df2.loc[:, column] = alsig.align_signals(df1.loc[df1.pair.eq(p), column].to_numpy(), df2.loc[:, column].to_numpy(), max_delay = max_delay, 
                                                                                         truncate=truncate, output_delay=False, assigned_delay=None, method= 'primary')
     elif ("pair" in df2.columns):
-        cols1 = cal_cols + [sort_col]
+        if "cal_type" in df1.columns:
+            cols1 = cal_cols + [sort_col]
+        else:
+            cols1 = [sort_col]
         cols2 = ph_cols + [sort_col]
         df1 = df1.sort_values(by=cols1)
         df2 = df2.sort_values(by=cols2)
@@ -242,8 +248,14 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
             df2.loc[df2.pair.eq(p), column], df1.loc[:, column] = alsig.align_signals(df2.loc[df2.pair.eq(p), column].to_numpy(), df1.loc[:, column].to_numpy(), max_delay = max_delay, 
                                                                                         truncate=truncate, output_delay=False, assigned_delay=None, method= 'primary')
     else:
-        cols1 = cal_cols + [sort_col]
-        cols2 = cal_cols + [sort_col]
+        if "cal_type" in df1.columns:
+            cols1 = cal_cols + [sort_col]
+        else:
+            cols1 = [sort_col]
+        if "cal_type" in df2.columns:
+            cols2 = cal_cols + [sort_col]
+        else:
+            cols2 = [sort_col]
         df1 = df1.sort_values(by=cols1)
         df2 = df2.sort_values(by=cols2)
         df1 = df1.reset_index(drop = False)
