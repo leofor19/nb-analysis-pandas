@@ -1,8 +1,8 @@
 # Python 3.8.12
 # 2022-02-07
 
-# Version 1.2.0
-# Latest update 2022-02-23
+# Version 1.2.1
+# Latest update 2022-03-10
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -108,8 +108,8 @@ def find_delay_simple_max_peak(s1, max_delay = None, peak_center = 0):
         input array 1
     max_delay : int or None, optional
         optional maximum tolerated delay, by default None
-    peak_center : int or None, optional
-        optional maximum tolerated delay, by default None
+    peak_center : int, optional
+        optional offset to center of array, by default 0
 
     Returns
     -------
@@ -120,7 +120,7 @@ def find_delay_simple_max_peak(s1, max_delay = None, peak_center = 0):
     delay = -np.argmax(np.abs(s1)) - int(peak_center)
 
     if max_delay is None:
-        max_delay = np.min([len(s1)])
+        max_delay = len(s1)
 
     if (delay > max_delay) and (delay > 0):
         delay = max_delay
@@ -128,6 +128,110 @@ def find_delay_simple_max_peak(s1, max_delay = None, peak_center = 0):
         delay = -max_delay
 
     return delay
+
+def simple_center_signal_max_peak(s1, max_delay = None, truncate = True, output_delay = False, peak_center = 0):
+    """Center max peak of single signal by prepending or appending zeroes.
+
+    Inputs are expected to be 1-D arrays.
+
+    If max_delay is None, the maximum tolerated delay is the smallest length of the input arrays.
+
+    Parameters
+    ----------
+    s1 : np.array-like
+        input array 1
+    max_delay : int or None, optional
+        optional maximum tolerated delay, by default None
+    truncate : bool, optional
+        set to True to maintain size of input arrays (truncating and prepending zeroes) or to False to implement delay by prepending with zeroes, by default True
+    output_delay : bool, optional
+        set to True to also return delay value, by default False
+    peak_center : int, optional
+        optional offset to center of array, by default 0
+
+    Returns
+    -------
+    out1 : np.array
+        output aligned array 1
+    delay : int, optional
+        returned if output_delay is set to True
+        integer output delay, signifying lag by number of samples
+    """
+
+    delay = find_delay_simple_max_peak(s1, max_delay = max_delay, peak_center = peak_center)
+
+    if delay == 0:
+        out1 = s1
+
+    elif delay > 0:
+        if truncate:
+            out1 = s1[:-delay]
+            # prepending zeroes
+            out1 = np.pad(out1, (delay, 0), mode='constant', constant_values = 0)
+
+        else:
+            # appending zeroes
+            out1 = np.pad(s1, (delay, 0), mode='constant', constant_values = 0)
+
+    else:
+        if truncate:
+            out1 = s1[-delay:]
+            # appending zeroes
+            out1 = np.pad(out1, (0, -delay), mode='constant', constant_values = 0)
+
+        else:
+            # appending zeroes
+            out1 = np.pad(s1, (0, -delay), mode='constant', constant_values = 0)
+
+    if output_delay:
+        return  out1, delay
+    else:
+        return out1
+
+def simple_align_signals_max_peak(s1, s2, max_delay = None, truncate = True, output_delay = False, peak_center = 0):
+    """Center max peaks of two signal by prepending or appending zeroes.
+
+    Inputs are expected to be 1-D arrays.
+
+    If max_delay is None, the maximum tolerated delay is the smallest length of the input arrays.
+
+    Parameters
+    ----------
+    s1 : np.array-like
+        input array 1
+    s2 : np.array-like
+        input array 2
+    max_delay : int or None, optional
+        optional maximum tolerated delay, by default None
+    truncate : bool, optional
+        set to True to maintain size of input arrays (truncating and prepending zeroes) or to False to implement delay by prepending with zeroes, by default True
+    output_delay : bool, optional
+        set to True to also return delay value, by default False
+    assigned_delay : int or None, optional
+        optional value for delay bypassing find_delay function, by default None
+    peak_center : int, optional
+        optional offset to center of array, by default 0
+
+    Returns
+    -------
+    out1 : np.array
+        output aligned array 1
+    out2 : np.array
+        output aligned array 2
+    delay_diff : int, optional
+        returned if output_delay is set to True
+        integer output delay, signifying lag by number of samples
+        for this function, signifies delay2 - delay1
+    """
+
+    out1, delay1 = simple_center_signal_max_peak(s1, max_delay = max_delay, truncate = truncate, output_delay = True, peak_center = peak_center)
+    out2, delay2 = simple_center_signal_max_peak(s2, max_delay = max_delay, truncate = truncate, output_delay = True, peak_center = peak_center)
+
+    if output_delay:
+        delay_diff = delay2 - delay1
+        return  out1, out2, delay_diff
+    else:
+        return out1, out2
 
 def find_delay(s1, s2, max_delay = None, out_xcorr = False):
     """Find delay between two signals using cross-correlation.
@@ -362,7 +466,7 @@ def primary_align_signals(s1, s2_fixed, max_delay = None, truncate = True, outpu
     else:
         return out1, out2
 
-def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False, method = 'primary'):
+def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False, method = 'primary', peak_center = 0):
     """Align two signals.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
@@ -391,11 +495,15 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
         optional value for delay bypassing find_delay function, by default None
     out_xcorr : bool, optional
         set to True to output cross-correlation, by default False
+        not used for 'simple' method
     method: str, optional
         align signals method, by default 'primary'
         available methods:
             'matlab': MATLAB method, always delays earliest signal
             'primary' or 'fixed': only alters s1, keeping s2 fixed
+            'simple' or 'max_peak': centers max of each signal, with optional adjustment using input peak_center
+    peak_center : int, optional
+        optional offset to center of array (for 'simple' method only), by default 0
 
     Returns
     -------
@@ -414,9 +522,12 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
     if (method.casefold() == 'primary') or (method.casefold() == 'fixed'):
         output = primary_align_signals(s1, s2_fixed = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, out_xcorr = out_xcorr)
     elif (method.casefold() == 'matlab'):
-        output = matlab_align_signals(s1, s2_fixed = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, out_xcorr = out_xcorr)
+        output = matlab_align_signals(s1, s2 = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, out_xcorr = out_xcorr)
+    elif (method.casefold() == 'simple') or (method.casefold() == 'max_peak'):
+        out_xcorr = False
+        output = simple_align_signals_max_peak(s1, s2 = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, peak_center = peak_center)
     else:
-        print("Align Signals method not available. Please select 'primary' or 'matlab'.")
+        print("Align Signals method not available. Please select 'primary' , 'matlab' or 'simple'.")
         return 0
 
     # output[0] = out1, output[1] = out2, output[2] = delay, output[3] = xcorr_out

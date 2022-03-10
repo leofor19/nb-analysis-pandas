@@ -2591,7 +2591,7 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
     conv_path : str, optional
         sub-folder for JSON files of converted data (if correction != 1), by default "Converted/"
     decimals : int, optional
-        number of decimals cases for np.arounding values, in particular after conversion, by default 2
+        number of decimals cases for np.arounding values, in particular after conversion, by default 4
     file_format: str
         target file format (either "parquet" or "csv"), by default "parquet"
     center: str, optional
