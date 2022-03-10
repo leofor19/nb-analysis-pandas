@@ -1,7 +1,7 @@
 # Python 3.8.12
 # 2022-02-16
 
-# Version 1.1.2
+# Version 1.1.3
 # Latest update 2022-03-10
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
@@ -22,6 +22,7 @@ Written by: Leonardo Fortaleza
 from copy import deepcopy
 # from datetime import datetime
 import itertools as it
+from types import new_class
 # import json
 # import os
 # import os.path
@@ -413,3 +414,48 @@ def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max
     df = pd.concat(processed, axis = 0)
 
     return df
+
+def df_trim_around_center(df, column = 'sample', length = 168):
+    """Trim dataframe signals, dropping signal edges longer/shorter than center +- length/2.
+
+    Function designed to use 'sample' column and replaces it with new values [0 to (length-1)].
+
+    Parameters
+    ----------
+    df : Pandas df
+        input dataframe
+    column : str, optional
+        column to compare for dropping, by default 'sample'
+    length : int, optional
+        target length of signals, by default 168
+
+    Returns
+    -------
+    df_out: Pandas df
+        output dataframe with trimmed signals
+    """
+    if "phantom" in df.columns:
+        # splits df in lists of dfs per grouping, criteria depending on 'calibration type 4' (phantom with Tx-off) or 'phantom scan'
+        if "cal_type" in df.columns:
+            df_list = dfproc.split_df(df, groups=["cal_type", "phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"])
+        else:
+            df_list = dfproc.split_df(df, groups=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"])
+    else:
+        df_list = dfproc.split_df(df.loc[df.cal_type.ne(1)], groups=["cal_type", "date", "rep", "iter", "attLO", "attRF"])
+
+    processed = []
+    new_samples = np.arange(length)
+
+    for data in tqdm(df_list):
+        data.reset_index(inplace=True)
+        for p in tqdm(data.pair.unique(), leave = False):
+            indexNames = data[(data.loc[data.pair.eq(p), column] < np.size(data.loc[data.pair.eq(p), column])/2 - length/2) & 
+                                (data.loc[data.pair.eq(p), column] > np.size(data.loc[data.pair.eq(p), column])/2 + length/2)].index
+            data.drop(indexNames, axis = 0, inplace = True)
+            data.loc[data.pair.eq(p), 'sample'] = new_samples
+        data.reset_index(inplace=True)
+        processed.append(data)
+
+    df_out = pd.concat(processed, axis=0)
+
+    return df_out
