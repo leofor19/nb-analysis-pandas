@@ -1,7 +1,7 @@
 # Python 3.8.12
 # 2022-02-16
 
-# Version 1.1.3
+# Version 1.1.4
 # Latest update 2022-03-10
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
@@ -449,14 +449,13 @@ def df_trim_around_center(df, column = 'sample', length = 168):
 
     for data in tqdm(df_list):
         data.reset_index(inplace=True)
+        if column.casefold() == 'sample':
+            center = (data.loc[:, column].size / data.pair.nunique()) // 2
+        else:
+            center = (data.loc[:, column].mean / data.pair.nunique()) // 2
+        indexNames = data[(data.loc[:, column] < center - length//2) & (data.loc[:, column] > center + length//2)].index
+        data.drop(indexNames, axis = 0, inplace = True)
         for p in tqdm(data.pair.unique(), leave = False):
-            if column.casefold() == 'sample':
-                indexNames = data[(data.loc[data.pair.eq(p), column] < np.size(data.loc[data.pair.eq(p), column])/2 - length/2) & 
-                                (data.loc[data.pair.eq(p), column] > np.size(data.loc[data.pair.eq(p), column])/2 + length/2)].index
-            else:
-                indexNames = data[(data.loc[data.pair.eq(p), column] < np.mean(data.loc[data.pair.eq(p), column])/2 - length/2) & 
-                                (data.loc[data.pair.eq(p), column] > np.mean(data.loc[data.pair.eq(p), column])/2 + length/2)].index
-            data.drop(indexNames, axis = 0, inplace = True)
             data.loc[data.pair.eq(p), 'sample'] = new_samples
         data.reset_index(inplace=True)
         processed.append(data)
