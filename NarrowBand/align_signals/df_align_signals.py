@@ -426,8 +426,9 @@ def df_trim_around_center(df, column = 'sample', length = 168):
         input dataframe
     column : str, optional
         column to compare for dropping, by default 'sample'
-    length : int, optional
+    length : int or float, optional
         target length of signals, by default 168
+        could also be used for time/frequency values
 
     Returns
     -------
@@ -449,8 +450,12 @@ def df_trim_around_center(df, column = 'sample', length = 168):
     for data in tqdm(df_list):
         data.reset_index(inplace=True)
         for p in tqdm(data.pair.unique(), leave = False):
-            indexNames = data[(data.loc[data.pair.eq(p), column] < np.size(data.loc[data.pair.eq(p), column])/2 - length/2) & 
+            if column.casefold() == 'sample':
+                indexNames = data[(data.loc[data.pair.eq(p), column] < np.size(data.loc[data.pair.eq(p), column])/2 - length/2) & 
                                 (data.loc[data.pair.eq(p), column] > np.size(data.loc[data.pair.eq(p), column])/2 + length/2)].index
+            else:
+                indexNames = data[(data.loc[data.pair.eq(p), column] < np.mean(data.loc[data.pair.eq(p), column])/2 - length/2) & 
+                                (data.loc[data.pair.eq(p), column] > np.mean(data.loc[data.pair.eq(p), column])/2 + length/2)].index
             data.drop(indexNames, axis = 0, inplace = True)
             data.loc[data.pair.eq(p), 'sample'] = new_samples
         data.reset_index(inplace=True)
