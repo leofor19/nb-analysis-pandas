@@ -1,8 +1,8 @@
 # Python 3.8.12
 # 2021-12-09
 
-# Version 1.0.4
-# Latest update 2022-03-07
+# Version 1.0.5
+# Latest update 2022-03-10
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -288,6 +288,8 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
 
         Window is to be applied to time-domain signal.
 
+        Can receive directly a window as a Numpy array (for window_type), which requires correct array length.
+
         Can also apply scipy.signal.get_window(), which has more options. Some of these require tuples for window_type.
         Please see Scipy docs for further information (https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html)
 
@@ -295,8 +297,9 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
     ----------
     td_df : Pandas df
         dataframe with time-domain signals
-    window_type : str, optional
+    window_type : str or nd.ndarray-like, optional
         string with window type (as explained above), by default 'hann'
+        can also receive a Numpy array for direct window definition, but requires attention to the length!
     use_scipy: bool, optional
         set to True to use scipy.signal.get_window function, by default False
         see Scipy docs for further information (https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html)
@@ -323,6 +326,8 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
                                     data = td_df.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) & (td_df.pair.eq(p)),:]
                                     if use_scipy:
                                         window = signal.get_window(window=window_type, Nx = data.signal.size, fft_bins = True)
+                                    elif isinstance(window_type,np.ndarray):
+                                        window = window_type
                                     else:
                                         window = fft_window(data.signal.size, window_type=window_type)
                                     td_df_out.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) 
@@ -335,6 +340,8 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
                             data = td_df.loc[(td_df.cal_type.eq(cal_type)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)),:]
                             if use_scipy:
                                 window = signal.get_window(window=window_type, Nx = data.loc[:, "signal"].size, fft_bins = True)
+                            elif isinstance(window_type,np.ndarray):
+                                window = window_type
                             else:
                                 window = fft_window(data.loc[:, "signal"].size, window_type=window_type)
                             td_df_out.loc[(td_df.cal_type.eq(cal_type)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)), "signal"] = window * data.loc[:, "signal"]
