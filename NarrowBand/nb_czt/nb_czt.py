@@ -489,6 +489,37 @@ def array_invert_to_time_domain(freqs, czt_data, t = None):
     time, sig_t = czt.freq2time(freqs, czt_data, t = t)
     return time, N*sig_t
 
+def iczt_spectral_zoom(freqs, czt_data, length = None, fs = None, f1 = None, f2 = None, t = 'auto'):
+
+    if not check_symmetric(czt_data, tol=1e-8):
+        freqs, czt_data = conjugate_symmetric(freqs, czt_data)
+
+    if length is None:
+        length = len(czt_data)
+    if fs is None:
+        fs = freqs[-1] - freqs[0] / (len(freqs) - 1)
+    if f1 is None:
+        f1 = freqs[0]
+    if f2 is None:
+        f2 = freqs[-1]
+
+    w = np.exp( -2j * np.pi * (f2-f1) / (length * fs) )
+    a = np.exp( 2j * np.pi * f1 / fs )
+
+    if t == 'auto':
+        t =  t = auto_time_array(freqs, periods = 1, step_division = 1, tstep = 1 / fs)
+
+    # Phase correction
+    phase = np.exp(-2j * np.pi * t[0] * freqs)
+
+    N = int(len(czt_data)/2)
+
+    signal = czt.iczt(czt_data, N=length, W = w, A = a, simple=True, t_method="scipy", f_method="numpy")
+
+    signal = np.real_if_close(signal)
+
+    return signal
+
 def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym=True, auto_complex_plane = False, 
                                 quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False, periods = 1, step_division = 1):
     """Convert phantom data scan DataFrame into new Dataframe with converted ICZT signals.
