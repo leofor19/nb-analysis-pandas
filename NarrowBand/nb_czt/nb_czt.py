@@ -1,8 +1,8 @@
 # Python 3.8.12
 # 2021-12-09
 
-# Version 1.0.5
-# Latest update 2022-03-10
+# Version 1.1.0
+# Latest update 2022-03-12
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -101,7 +101,7 @@ def zeroes_for_fft(data_ch1, data_ch2, freqs, f_step = 12.5*1.e6/1, fft_num_samp
 
     return fft_data, fft_freqs, f_step
 
-def generate_freq_array(freqs, max_freq = None, freq_step = None, min_freq = None, fscale = 1e6):
+def generate_freq_array(freqs, max_freq = None, freq_step = None, min_freq = None, fscale = 1e6, extra_freqs = 0):
     """Generate array of frequencies for ICZT.
 
     Parameters
@@ -116,6 +116,8 @@ def generate_freq_array(freqs, max_freq = None, freq_step = None, min_freq = Non
         set to None for use of 0 or the minimum frequency of freqs array (negative values), otherwise set a value, by default None
     fscale : float, optional
         scale for frequencies, by default 1e6 (MHz)
+    extra_freqs: int, optional
+        extra frequencies (zeroes) around those present in freqs, by default 0
 
     Returns
     -------
@@ -132,13 +134,14 @@ def generate_freq_array(freqs, max_freq = None, freq_step = None, min_freq = Non
         freq_step = diffs[diffs>0].min()
 
     if max_freq == None:
-        max_freq = freqs.max() + freq_step
+        max_freq = freqs.max() + freq_step*(extra_freqs + 1)
 
     if min_freq == None:
-        if freqs.min() > 0:
-            min_freq = 0
-        else:
-            min_freq = freqs.min()
+        # if freqs.min() > 0:
+        #     min_freq = 0
+        # else:
+        #     min_freq = freqs.min()
+        min_freq = freqs.min() - freq_step*extra_freqs
 
     out_freqs = np.arange(min_freq*fscale, max_freq*fscale, step = freq_step*fscale)
     return out_freqs
@@ -193,7 +196,7 @@ def auto_time_array(f, periods = 1, step_division = 1, start = None, max_time = 
     if (start is not None) or (max_time is not None) or (periods != 1):
         periods = np.around(periods)
         if tstep is None:
-            tstep = (t[-1] - t[0]) / (len(t))
+            tstep = (t[-1] - t[0]) / (len(t)) / step_division
         if start is None:
             start = t[0] * periods
         if max_time is None:
@@ -278,7 +281,7 @@ def place_czt_value(czt_data, f, freqs, df, pair = None, quadrant = 1, I=2, Q=1,
 
     return czt_data_out
 
-def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
+def apply_fft_window(td_df, window_type = 'hann', use_scipy=False, column = 'signal'):
     """Apply window to time-domain for reducing sidelobes due to FFT of incoherently sampled data.
 
         Window type is a case INsensitive string and can be one of:
@@ -304,6 +307,8 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
         set to True to use scipy.signal.get_window function, by default False
         see Scipy docs for further information (https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html)
         some window types require tuples for window_type
+    column: str or List[str], optional
+        df column to apply window, by default 'signal'
 
     Returns
     -------
@@ -311,6 +316,9 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
         dataframe after window application
     """
     td_df_out = deepcopy(td_df)
+
+    if ~isinstance(column, list):
+        column = [column]
 
     if window_type is None:
         return td_df_out
@@ -324,30 +332,33 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False):
                             for ite in tqdm(td_df.iter.unique(), leave=False):
                                 for p in tqdm(td_df.pair.unique(), leave=False):
                                     data = td_df.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) & (td_df.pair.eq(p)),:]
-                                    if use_scipy:
-                                        window = signal.get_window(window=window_type, Nx = data.signal.size, fft_bins = True)
-                                    elif isinstance(window_type,np.ndarray):
-                                        window = window_type
-                                    else:
-                                        window = fft_window(data.signal.size, window_type=window_type)
-                                    td_df_out.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) 
-                                                    & (td_df.pair.eq(p)), "signal"] = window * data.loc[:, "signal"]
+                                    for c in column:
+                                        if use_scipy:
+                                            window = signal.get_window(window=window_type, Nx = data[c].size, fft_bins = True)
+                                        elif isinstance(window_type,np.ndarray):
+                                            window = window_type
+                                        else:
+                                            window = fft_window(data[c].size, window_type=window_type)
+                                        td_df_out.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) 
+                                                        & (td_df.pair.eq(p)), c] = data[c].multiply(window, axis = 0)
         else:
             for cal_type in tqdm(td_df.cal_type.unique()):
                 for date in tqdm(td_df.date.unique(), leave=False):
                     for rep in tqdm(td_df.rep.unique(), leave=False):
                         for ite in tqdm(td_df.iter.unique(), leave=False):
                             data = td_df.loc[(td_df.cal_type.eq(cal_type)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)),:]
-                            if use_scipy:
-                                window = signal.get_window(window=window_type, Nx = data.loc[:, "signal"].size, fft_bins = True)
-                            elif isinstance(window_type,np.ndarray):
-                                window = window_type
-                            else:
-                                window = fft_window(data.loc[:, "signal"].size, window_type=window_type)
-                            td_df_out.loc[(td_df.cal_type.eq(cal_type)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)), "signal"] = window * data.loc[:, "signal"]
+                            for c in column:
+                                if use_scipy:
+                                    window = signal.get_window(window=window_type, Nx = data[c].size, fft_bins = True)
+                                elif isinstance(window_type,np.ndarray):
+                                    window = window_type
+                                else:
+                                    window = fft_window(data[c].size, window_type=window_type)
+                                td_df_out.loc[(td_df.cal_type.eq(cal_type)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)), c] = data[c].multiply(window, axis = 0)
         return td_df_out
 
-def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, conj_sym=True, auto_complex_plane = False, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False):
+def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, conj_sym=False, auto_complex_plane = False, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6,
+                        extra_freqs = 0, verbose = False):
     """Convert phantom data scan DataFrame into new Dataframe with reconstructed CZT signals.
 
     The new DataFrame contains columns for each antenna pair, for which there are two subcolumns: frequencies and simulated CZT signal.
@@ -365,8 +376,8 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
         set to None for use of minimum frequency difference within df or else set a value, by default None
     min_freq : float, optional
         set to None for use of 0 or the minimum frequency of freqs array (negative values), otherwise set a value, by default None
-    conj_sym: bool, optional (default True)
-        set to True to convert FD signal to conjugate symmetrical (to force real signal), by default True
+    conj_sym: bool, optional (default False)
+        set to True to convert FD signal to conjugate symmetrical (to force real signal), by default False
     auto_complex_plane: bool, optional (default True)
         set to True to automatically estimate Complex Plane quadrant and I-ch, Q-ch number, by default True
     quadrant : int, optional
@@ -379,6 +390,8 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
         data column identifier string, by default 'voltage'
     fscale : float, optional
         scale for frequencies, by default 1e6 (MHz)
+    extra_freqs: int, optional
+        extra frequencies (zeroes) around those present in freqs, by default 0
     verbose: bool, optional
         verbosity for auto_complex_plane
         set to True to print quadrant, I-ch and Q-ch, by default False
@@ -405,7 +418,7 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
             in_process = []
             data.reset_index(inplace=True)
             freq = data.freq.unique()
-            freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale)
+            freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data_shape = np.zeros(freqs.shape, dtype=complex)
             for pair in tqdm(data.pair.unique(), leave=False):
                 # creates frequency and CZT data arrays per antenna pair
@@ -450,7 +463,7 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
         for data in tqdm(df_list):
             data.reset_index(inplace=True)
             freq = data.freq.unique()
-            freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale)
+            freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data = np.zeros(freqs.shape, dtype=complex)
             for f in tqdm(freq, leave=False):
                 czt_data = place_czt_value(czt_data = czt_data, f = f, freqs = freqs, df = data, pair = None, quadrant = quadrant, I=I, Q=Q, signal=signal)
@@ -520,8 +533,8 @@ def iczt_spectral_zoom(freqs, czt_data, length = None, fs = None, f1 = None, f2 
 
     return signal
 
-def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym=True, auto_complex_plane = False, 
-                                quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, verbose = False, periods = 1, step_division = 1):
+def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym=False, auto_complex_plane = False, 
+                                quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, extra_freqs = 0, verbose = False, periods = 1, step_division = 1, tstep = 5e-10):
     """Convert phantom data scan DataFrame into new Dataframe with converted ICZT signals.
 
     The new DataFrame contains columns for each antenna pair, for which there are two subcolumns: frequencies and converted ICZT signal.
@@ -542,8 +555,9 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
         set to None for standard FFT time sweep
     min_freq : float, optional
         set to None for use of 0 or the minimum frequency of freqs array (negative values), otherwise set a value, by default None
-    conj_sym: bool, optional (default True)
-        set to True to convert FD signal to conjugate symmetrical (to force real signal), by default True
+    conj_sym: bool, optional (default False)
+        set to True to convert FD signal to conjugate symmetrical (to force real signal), by default False
+        when set to False, extracts real part of the TD signal automatically
     auto_complex_plane: bool, optional (default True)
         set to True to automatically estimate Complex Plane quadrant and I-ch, Q-ch number, by default True
     quadrant : int, optional
@@ -556,12 +570,16 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
         data column identifier string, by default 'voltage'
     fscale : float, optional
         scale for frequencies, by default 1e6 (MHz)
+    extra_freqs: int, optional
+        extra frequencies (zeroes) around those present in freqs, by default 0
     verbose: bool, optional
         set to True to print quadrant, I-ch and Q-ch, by default False
     periods : int, optional
         number of periods to use, by default 1
     step_division : int, optional
         integer to divide time step, by default 1
+    tstep : None or float, optional
+        time step, by default 5e-10
 
     Returns
     -------
@@ -584,7 +602,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
             in_process = []
             data.reset_index(inplace=True)
             freq = data.freq.unique()
-            freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale)
+            freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data_shape = np.zeros(freqs.shape, dtype=complex)
             for pair in tqdm(data.pair.unique(), leave=False):
                 czt_data = deepcopy(czt_data_shape)
@@ -595,11 +613,13 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
                 else:
                     freqs_out = freqs
                 if t == 'auto':
-                    t2 = auto_time_array(freqs_out, periods = periods, step_division = step_division, start = None)
+                    t2 = auto_time_array(freqs_out, periods = periods, step_division = step_division, start = None, tstep = tstep)
                 else:
                     t2 = t
                 N = int(len(czt_data)/2)
                 time, sig_t = czt.freq2time(freqs_out, czt_data, t = t2)
+                if not conj_sym:
+                    sig_t = np.real(sig_t)
                 td_data = pd.concat([pd.DataFrame({'sample': np.arange(0,len(sig_t))}), pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
                 # td_data.columns = pd.MultiIndex.from_product([[pair],['time','signal']])
                 td_data["pair"] = pair
@@ -635,7 +655,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
         for data in tqdm(df_list):
             data.reset_index(inplace=True)
             freq = data.freq.unique()
-            freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale)
+            freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data = np.zeros(freqs.shape, dtype=complex)
             for f in tqdm(freq, leave=False):
                 czt_data = place_czt_value(czt_data = czt_data, f = f, freqs = freqs, df = data, pair = None, quadrant = quadrant, I=I, Q=Q, signal=signal)
@@ -644,11 +664,13 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
             else:
                 freqs_out = freqs
             if t == 'auto':
-                t2 = auto_time_array(freqs_out, periods = periods, step_division = step_division, start = None)
+                t2 = auto_time_array(freqs_out, periods = periods, step_division = step_division, start = None, tstep = tstep)
             else:
                 t2 = t
             N = int(len(czt_data)/2)
             time, sig_t = czt.freq2time(freqs_out, czt_data, t = t2)
+            if not conj_sym:
+                sig_t = np.real(sig_t)
             iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_t)), 'time': time, 'signal': N*sig_t})
 
             iczt_df["cal_type"] = data.cal_type.unique()[0]
@@ -668,7 +690,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
     df_out = pd.concat(processed, axis=0, ignore_index=True)
     return df_out
 
-def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True, periods = 1, step_division = 1):
+def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, step_division = 1, tstep = 5e-10):
     """Convert CZT DataFrame into new Dataframe with converted ICZT signals.
 
     The new DataFrame contains columns for each antenna pair, for which there are two subcolumns: frequencies and converted ICZT signal.
@@ -682,11 +704,14 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True, periods = 1, s
     t : np.ndarray
         time for output signal, optional, defaults to standard FFT time sweep
     conj_sym: bool, optional (default True)
-        set to True to convert FD signal to conjugate symmetrical (to force real signal), by default True
+        set to True to convert FD signal to conjugate symmetrical (to force real signal), by default False
+        when set to False, extracts real part of the TD signal automatically
     periods : int, optional
         number of periods to use, by default 1
     step_division : int, optional
         integer to divide time step, by default 1
+    tstep : None or float, optional
+        time step, by default 5e-10
 
     Returns
     -------
@@ -712,11 +737,13 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True, periods = 1, s
                     freqs = data.freq.to_numpy()
                     czt_data = data.czt.to_numpy()
                 if t == 'auto':
-                    t2 = auto_time_array(freqs*1e6, periods = periods, step_division = step_division, start = None)
+                    t2 = auto_time_array(freqs*1e6, periods = periods, step_division = step_division, start = None, tstep = tstep)
                 else:
                     t2 = t
                 N = int(len(czt_data)/2)
                 time, sig_t = czt.freq2time(freqs, czt_data, t=t2)
+                if not conj_sym:
+                    sig_t = np.real(sig_t)
                 td_data = pd.concat([pd.DataFrame({'sample': np.arange(0,len(sig_t))}), pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
                 # td_data.columns = pd.MultiIndex.from_product([[p],['time','signal']])
                 td_data["pair"] = p
@@ -755,11 +782,13 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=True, periods = 1, s
                 freqs = data.freq.to_numpy()
                 czt_data = data.czt.to_numpy()
             if t == 'auto':
-                    t2 = auto_time_array(freqs, periods = periods, step_division = step_division, start = None)
+                    t2 = auto_time_array(freqs, periods = periods, step_division = step_division, start = None, tstep = tstep)
             else:
                 t2 = t
             N = int(len(czt_data)/2)
             time, sig_t = czt.freq2time(freqs, czt_data, t=t2)
+            if not conj_sym:
+                sig_t = np.real(sig_t)
             iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_t)), 'time': time, 'signal': N*sig_t})
 
             iczt_df["cal_type"] = data.cal_type.unique()[0]
