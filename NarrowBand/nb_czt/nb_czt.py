@@ -728,14 +728,16 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, 
         processed = []
 
         for data in tqdm(df_list):
+            data = deepcopy(data)
+            data.reset_index(inplace=True)
             in_process = []
-            for p in data.pair:
-                scan = data.loc[:, data.pair.eq(p)]
+            for p in data.pair.unique():
+                scan = data.loc[(data.pair.eq(p))]
                 if conj_sym:
                     freqs, czt_data = conjugate_symmetric(scan.freq,scan.czt)
                 else:
-                    freqs = data.freq.to_numpy()
-                    czt_data = data.czt.to_numpy()
+                    freqs = scan.freq.to_numpy()
+                    czt_data = scan.czt.to_numpy()
                 if t == 'auto':
                     t2 = auto_time_array(freqs*1e6, periods = periods, step_division = step_division, start = None, tstep = tstep)
                 else:
@@ -751,7 +753,7 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, 
                 td_data["Rx"] = int(data.loc[data.pair.eq(p), 'Rx'].unique())
                 in_process.append(td_data)
 
-            iczt_df = pd.concat(in_process, axis=0)
+            iczt_df = pd.concat(in_process, axis=0, ignore_index=True)
 
             iczt_df["phantom"] = int(data.phantom.unique())
             iczt_df["angle"] = int(data.angle.unique())
