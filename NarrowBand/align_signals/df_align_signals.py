@@ -57,7 +57,8 @@ import NarrowBand.analysis_pd.df_processing as dfproc
 # import NarrowBand.analysis_pd.df_data_essentials as nbd
 # from NarrowBand.analysis_pd.uncategorize import uncategorize
 
-def df_simple_align_signals(df, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, peak_center = 0):
+def df_simple_align_signals(df, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, method = 'simple',
+                            peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None):
     """Centers signals of a dataframes by prepending or appending zeroes.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
@@ -78,6 +79,20 @@ def df_simple_align_signals(df, column = 'signal', sort_col = 'time', max_delay 
         optional maximum tolerated delay, by default None
     truncate : bool, optional
         set to True to maintain size of input arrays (truncating and prepending zeroes) or to False to implement delay by prepending with zeroes, by default True
+    method: str, optional
+        align signals method, by default 'simple'
+        available methods:
+            'matlab': MATLAB method, always delays earliest signal
+            'primary' or 'fixed': only alters s1, keeping s2 fixed
+            'simple' or 'max_peak': centers max of each signal, with optional adjustment using input peak_center
+    peak_center_offset : int, optional
+        optional offset to center of array (for 'simple' method only), by default 0
+    peakLowerBound: int or None, optional
+        optional lower bound position for array max (useful for multiple pulses with known expected position), by default None
+        (for 'simple' method only)
+    peakUpperBound: int or None, optional
+        optional upper bound position for array max (useful for multiple pulses with known expected position), by default None
+        (for 'simple' method only)
 
     Returns
     -------
@@ -104,7 +119,8 @@ def df_simple_align_signals(df, column = 'signal', sort_col = 'time', max_delay 
         for p in tqdm(data.pair.unique(), leave = False):
             for c in tqdm(column, leave = False):
                 data.loc[data.pair.eq(p), c] = alsig.align_signals(data.loc[data.pair.eq(p), c], max_delay = max_delay, truncate=truncate, output_delay=False, 
-                                                                        assigned_delay=None, method = 'simple', peak_center = peak_center)
+                                                                        assigned_delay=None, method = method, peak_center_offset = peak_center_offset,
+                                                                        peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
         processed.append(data)
 
     df_out = pd.concat(processed, axis=0)
@@ -203,7 +219,7 @@ def df_align_signals(df, df_ref, column = 'signal', sort_col = 'time', max_delay
     for data in tqdm(df_list):
         # in_process = []
         data.reset_index(inplace=True)
-        data, _ = direct_df_align_signals(data, df_ref, column = column, sort_col = sort_col, max_delay = max_delay, truncate = truncate, fixed_df2=True, method = 'matlab', peak_center = 0)
+        data, _ = direct_df_align_signals(data, df_ref, column = column, sort_col = sort_col, max_delay = max_delay, truncate = truncate, fixed_df2=True, method = 'matlab', peak_center_offset = 0)
 
         processed.append(data)
 
@@ -211,7 +227,8 @@ def df_align_signals(df, df_ref, column = 'signal', sort_col = 'time', max_delay
 
     return df_out
 
-def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, fixed_df2 = True, method = 'matlab', peak_center = 0):
+def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, fixed_df2 = True, method = 'matlab', peak_center_offset = 0, 
+                            peakLowerBound = None, peakUpperBound = None):
     """Align signals between two dataframes by delaying earliest signal, assumes both dataframes contain a single scan.
 
     Note that by default ph_fixed_df2 = True, so it keeps df2 fixed whenever df1 and df2 are of same type (phantom vs. calibrations 2-3).
@@ -244,8 +261,14 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
             'matlab': MATLAB method, always delays earliest signal
             'primary' or 'fixed': only alters s1, keeping s2 fixed
             'simple' or 'max_peak': centers max of each signal, with optional adjustment using input peak_center
-    peak_center : int, optional
+    peak_center_offset : int, optional
         optional offset to center of array (for 'simple' method only), by default 0
+    peakLowerBound: int or None, optional
+        optional lower bound position for array max (useful for multiple pulses with known expected position), by default None
+        (for 'simple' method only)
+    peakUpperBound: int or None, optional
+        optional upper bound position for array max (useful for multiple pulses with known expected position), by default None
+        (for 'simple' method only)
 
     Returns
     -------
@@ -284,7 +307,9 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
                                                                                                             truncate=truncate, output_delay=False, assigned_delay=None, method= 'primary')
                 else:
                     df1.loc[df1.pair.eq(p), c], df2.loc[df2.pair.eq(p), c] = alsig.align_signals(df1.loc[df1.pair.eq(p), c], df2.loc[df2.pair.eq(p), c], max_delay = max_delay,
-                                                                                                            truncate=truncate, output_delay=False, assigned_delay=None, method = method, peak_center = peak_center)
+                                                                                                            truncate=truncate, output_delay=False, assigned_delay=None, method = method, 
+                                                                                                            peak_center_offset = peak_center_offset, peakLowerBound = peakLowerBound, 
+                                                                                                            peakUpperBound = peakUpperBound)
     elif ("pair" in df1.columns):
         cols1 = ph_cols + [sort_col]
         if "cal_type" in df2.columns:
@@ -338,14 +363,16 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
                                                                                 output_delay=False, assigned_delay=None, method= 'primary')
             else:
                 df1.loc[:, c], df2.loc[:, c] = alsig.align_signals(df1.loc[:, c].to_numpy(), df2.loc[:, c].to_numpy(), max_delay = max_delay, truncate=truncate, 
-                                                                                output_delay=False, assigned_delay=None, method = method, peak_center = peak_center)
+                                                                                output_delay=False, assigned_delay=None, method = method, peak_center_offset = peak_center_offset, 
+                                                                                peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
 
     df1 = df1.set_index('index', drop=True)
     df2 = df2.set_index('index', drop=True)
 
     return df1, df2
 
-def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, method = 'matlab', decimals = 4, peak_center = 0):
+def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, method = 'matlab', decimals = 4, peak_center_offset = 0, 
+                                    peakLowerBound = None, peakUpperBound = None):
     """Align signals for antennas with same distance in-between on a same dataframe by delaying earliest signal.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
@@ -372,8 +399,14 @@ def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max
             'simple' or 'max_peak': centers max of each signal, with optional adjustment using input peak_center
     decimals : int, optional
         number of decimals cases for np.arounding values, in particular after conversion, by default 4
-    peak_center : int, optional
+    peak_center_offset : int, optional
         optional offset to center of array (for 'simple' method only), by default 0
+    peakLowerBound: int or None, optional
+        optional lower bound position for array max (useful for multiple pulses with known expected position), by default None
+        (for 'simple' method only)
+    peakUpperBound: int or None, optional
+        optional upper bound position for array max (useful for multiple pulses with known expected position), by default None
+        (for 'simple' method only)
 
     Returns
     -------
@@ -404,7 +437,8 @@ def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max
                 for c in tqdm(column, leave = False):
                     data.loc[data.pair.eq(p1), c], data.loc[data.pair.eq(p2), c] = alsig.align_signals(data.loc[data.pair.eq(p1), c], data.loc[data.pair.eq(p2), c], max_delay = max_delay, 
                                                                                                             truncate=truncate, output_delay=False, assigned_delay=None, method= method, 
-                                                                                                            peak_center = peak_center)
+                                                                                                            peak_center_offset = peak_center_offset, peakLowerBound = peakLowerBound, 
+                                                                                                            peakUpperBound = peakUpperBound)
                 p1 = deepcopy(p2)
 
         data = data.set_index('index', drop=True)
