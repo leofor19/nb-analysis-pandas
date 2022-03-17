@@ -208,7 +208,7 @@ def simple_center_signal_max_peak(s1, max_delay = None, truncate = True, output_
     else:
         return out1
 
-def simple_align_signals_max_peak(s1, s2, max_delay = None, truncate = True, output_delay = False, peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None):
+def simple_align_signals_max_peak(s1, s2 = None, max_delay = None, truncate = True, output_delay = False, peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None):
     """Center max peaks of two signal by prepending or appending zeroes.
 
     Inputs are expected to be 1-D arrays.
@@ -219,8 +219,8 @@ def simple_align_signals_max_peak(s1, s2, max_delay = None, truncate = True, out
     ----------
     s1 : np.array-like
         input array 1
-    s2 : np.array-like
-        input array 2
+    s2 : np.array-like, optional
+        input array 2, by default None
     max_delay : int or None, optional
         optional maximum tolerated delay, by default None
     truncate : bool, optional
@@ -250,8 +250,12 @@ def simple_align_signals_max_peak(s1, s2, max_delay = None, truncate = True, out
 
     out1, delay1 = simple_center_signal_max_peak(s1, max_delay = max_delay, truncate = truncate, output_delay = True, peak_center_offset = peak_center_offset,
                                                  peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
-    out2, delay2 = simple_center_signal_max_peak(s2, max_delay = max_delay, truncate = truncate, output_delay = True, peak_center_offset = peak_center_offset,
-                                                 peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
+    if s2 is not None:
+        out2, delay2 = simple_center_signal_max_peak(s2, max_delay = max_delay, truncate = truncate, output_delay = True, peak_center_offset = peak_center_offset,
+                                                    peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
+    else:
+        out2 = None
+        delay2 = 0
 
     if output_delay:
         delay_diff = delay2 - delay1
@@ -292,11 +296,11 @@ def find_delay(s1, s2, max_delay = None, out_xcorr = False):
     """
     s1 = np.real_if_close(s1, tol = 10000)
     s2 = np.real_if_close(s2, tol = 10000)
-    xcorr1 = signal.correlate(s1, s2, mode='full', method='auto')
+    xcorr1 = signal.correlate(s1 / np.std(s1), s2 / np.std(s2), mode='full', method='auto') / np.min(len(s1),len(s2)) # normalized cross-correlation
     lags1 = signal.correlation_lags(np.size(s1), np.size(s2), mode='full')
     delay1 = -lags1[np.argmax(xcorr1)]
 
-    xcorr2 = signal.correlate(s2, s1, mode='full', method='auto')
+    xcorr2 = signal.correlate(s2 / np.std(s2), s1 / np.std(s1), mode='full', method='auto') / np.min(len(s1),len(s2)) # normalized cross-correlation
     lags2 = signal.correlation_lags(np.size(s2), np.size(s1), mode='full')
     delay2 = -lags2[np.argmax(xcorr2)]
 
@@ -363,7 +367,7 @@ def matlab_align_signals(s1, s2, max_delay = None, truncate = True, output_delay
         # use assigned_delay if it's an integer value
         delay = assigned_delay
     elif out_xcorr:
-        delay, xcorr_out = find_delay(s1, s2, max_delay = max_delay, out_xcorr = out_xcorr)
+        delay, xcorr_out = find_delay(s1 / np.std(s1), s2 / np.std(s2), max_delay = max_delay, out_xcorr = out_xcorr) / np.min(len(s1),len(s2)) # normalized cross-correlation
     else:
         delay = find_delay(s1, s2, max_delay = max_delay)
 
@@ -450,7 +454,7 @@ def primary_align_signals(s1, s2_fixed, max_delay = None, truncate = True, outpu
         # use assigned_delay if it's an integer value
         delay = assigned_delay
     elif out_xcorr:
-        delay, xcorr_out = find_delay(s1, s2_fixed, max_delay = max_delay, out_xcorr = out_xcorr)
+        delay, xcorr_out = find_delay(s1 / np.std(s1), s2_fixed / np.std(s2_fixed), max_delay = max_delay, out_xcorr = out_xcorr) / np.min(len(s1),len(s2)) # normalized cross-correlation
     else:
         delay = find_delay(s1, s2_fixed, max_delay = max_delay)
 
@@ -492,7 +496,7 @@ def primary_align_signals(s1, s2_fixed, max_delay = None, truncate = True, outpu
     else:
         return out1, out2
 
-def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False, method = 'primary',
+def align_signals(s1, s2 = None, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False, method = 'primary',
                      peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None):
     """Align two signals.
 
@@ -510,8 +514,8 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
     ----------
     s1 : np.array-like
         input array 1
-    s2 : np.array-like
-        input array 2
+    s2 : np.array-like, optional
+        input array 2, by default None
     max_delay : int or None, optional
         optional maximum tolerated delay, by default None
     truncate : bool, optional
@@ -558,7 +562,7 @@ def align_signals(s1, s2, max_delay = None, truncate = True, output_delay = Fals
         output = matlab_align_signals(s1, s2 = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, out_xcorr = out_xcorr)
     elif (method.casefold() == 'simple') or (method.casefold() == 'max_peak'):
         out_xcorr = False
-        output = simple_align_signals_max_peak(s1, s2 = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, 
+        output = simple_align_signals_max_peak(s1, s2 = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, 
                                                 peak_center_offset = peak_center_offset, peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
     else:
         print("Align Signals method not available. Please select 'primary' , 'matlab' or 'simple'.")

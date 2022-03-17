@@ -592,7 +592,7 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
 
                 df_list[-1] = df_list[-1].sort_values(intersection, inplace=False, ignore_index=True).copy()
 
-    if ~out_as_list:
+    if not out_as_list:
         df_list = pd.concat(df_list, axis = 0)
 
     return df_list
@@ -680,9 +680,8 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
 
                 df_list[-1] = df_list[-1].sort_values(intersection, inplace=False, ignore_index=True).copy()
 
-    if ~out_as_list:
+    if not out_as_list:
         df_list = pd.concat(df_list, axis = 0)
-
     return df_list
 
 def pivot_for_multivariate(df, index=None, columns=list(["pair","freq"]), values=list(["voltage_mag"])):

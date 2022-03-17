@@ -118,7 +118,7 @@ def df_simple_align_signals(df, column = 'signal', sort_col = 'time', max_delay 
         data.reset_index(inplace=True)
         for p in tqdm(data.pair.unique(), leave = False):
             for c in tqdm(column, leave = False):
-                data.loc[data.pair.eq(p), c] = alsig.align_signals(data.loc[data.pair.eq(p), c], max_delay = max_delay, truncate=truncate, output_delay=False, 
+                data.loc[data.pair.eq(p), c], _ = alsig.align_signals(data.loc[data.pair.eq(p), c], max_delay = max_delay, truncate=truncate, output_delay=False, 
                                                                         assigned_delay=None, method = method, peak_center_offset = peak_center_offset,
                                                                         peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
         processed.append(data)
@@ -430,8 +430,8 @@ def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max
         data = data.sort_values(by=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", sort_col])
         data = data.reset_index(drop = False)
 
-        for d in tqdm(data.distances.unique().to_list(), leave = False):
-            pairs = data.loc[data.distances.eq(d)].pair.unique().to_list()
+        for d in tqdm(data.distances.unique(), leave = False):
+            pairs = data.loc[data.distances.eq(d)].pair.unique()
             p1 = pairs[0]
             for p2 in tqdm(pairs[1:], leave = False):
                 for c in tqdm(column, leave = False):
