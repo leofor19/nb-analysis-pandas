@@ -620,6 +620,8 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
                 time, sig_t = czt.freq2time(freqs_out, czt_data, t = t2)
                 if not conj_sym:
                     sig_t = np.real(sig_t)
+                    if freqs[0] >= 0:
+                        sig_t = 2*sig_t # magnitude correction for using only positive frequencies
                 td_data = pd.concat([pd.DataFrame({'sample': np.arange(0,len(sig_t))}), pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
                 # td_data.columns = pd.MultiIndex.from_product([[pair],['time','signal']])
                 td_data["pair"] = pair
@@ -671,6 +673,8 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
             time, sig_t = czt.freq2time(freqs_out, czt_data, t = t2)
             if not conj_sym:
                 sig_t = np.real(sig_t)
+                if freqs[0] >= 0:
+                    sig_t = 2*sig_t # magnitude correction for using only positive frequencies
             iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_t)), 'time': time, 'signal': N*sig_t})
 
             iczt_df["cal_type"] = data.cal_type.unique()[0]
@@ -746,6 +750,8 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, 
                 time, sig_t = czt.freq2time(freqs, czt_data, t=t2)
                 if not conj_sym:
                     sig_t = np.real(sig_t)
+                    if freqs[0] >= 0:
+                        sig_t = 2*sig_t # magnitude correction for using only positive frequencies
                 td_data = pd.concat([pd.DataFrame({'sample': np.arange(0,len(sig_t))}), pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
                 # td_data.columns = pd.MultiIndex.from_product([[p],['time','signal']])
                 td_data["pair"] = p
@@ -791,6 +797,8 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, 
             time, sig_t = czt.freq2time(freqs, czt_data, t=t2)
             if not conj_sym:
                 sig_t = np.real(sig_t)
+                if freqs[0] >= 0:
+                    sig_t = 2*sig_t # magnitude correction for using only positive frequencies
             iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_t)), 'time': time, 'signal': N*sig_t})
 
             iczt_df["cal_type"] = data.cal_type.unique()[0]
