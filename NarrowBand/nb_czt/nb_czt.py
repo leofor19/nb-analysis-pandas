@@ -40,6 +40,7 @@ from pathlib import Path
 import re
 import sys
 import warnings
+from attr import validate
 
 # Third-party library imports
 import dask.dataframe as dd
@@ -1128,3 +1129,61 @@ def plot_complex_quadrants(df, pair = None, I = 1, Q = 2, fscale = 1e6, t = 'aut
     else:
         plt.show()
     return
+
+def correct_positive_pulses(df, column = 'signal', drop_columns = ['sample', 'time']):
+
+    # attempt to make more efficient function (using groupby instead of for loops), but logic is trickier
+    df2 = deepcopy(df)
+    df2.drop(drop_columns, inplace = True)
+
+    if "phantom" in df.columns:
+        # columns to group by df in lists of dfs per grouping, criteria depending on 'calibration type 4' (phantom with Tx-off) or 'phantom scan'
+        if "cal_type" in df.columns:
+            df.groupby(["cal_type", "phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx"])
+            df2.groupby(["cal_type", "phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx"]).agg(
+                        max=pd.NamedAgg(column=column, aggfunc='max'), min=pd.NamedAgg(column=column, aggfunc='min'))
+        else:
+            df.groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx"])
+            df2.groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx"]).agg(
+                        max=pd.NamedAgg(column=column, aggfunc='max'), min=pd.NamedAgg(column=column, aggfunc='min'))
+    else:
+        df.groupby(["cal_type", "date", "rep", "iter", "attLO", "attRF"])
+        df2.groupby(["cal_type", "date", "rep", "iter", "attLO", "attRF"]).agg(
+                        max=pd.NamedAgg(column=column, aggfunc='max'), min=pd.NamedAgg(column=column, aggfunc='min'))
+
+        df2['multiplier'] = -1.0 if np.abs(df2['min']) > np.abs(df2['max']) else 1.0
+
+        dfout = df.merge(df2['multiplier'], how='left', validate = 'many_to_one')
+
+        dfout['signal'] = dfout['signal'].multiply(dfout['multiplier'], axis='columns', level=None, fill_value=None)
+        dfout.drop('multipier', inplace=True)
+        dfout.reset_index(inplace = True)
+
+    return dfout
+
+
+def correct_positive_pulses2(df, column = 'signal', drop_columns = ['sample', 'time']):
+
+    if "phantom" in df.columns:
+        # splits df in lists of dfs per grouping, criteria depending on 'calibration type 4' (phantom with Tx-off) or 'phantom scan'
+        if "cal_type" in df.columns:
+            df_list = dfproc.split_df(df, groups=["cal_type", "phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx"])
+        else:
+            df_list = dfproc.split_df(df, groups=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx"])
+    else:
+        df_list = dfproc.split_df(df.loc[df.cal_type.ne(1)], groups=["cal_type", "date", "rep", "iter", "attLO", "attRF"])
+
+    processed = []
+
+    for data in tqdm(df_list):
+        data.reset_index(inplace=True)
+        data['max'] = data[column].max()
+        data['min'] = data[column].min()
+
+        processed.append(data)
+
+    dfout = pd.concat(processed, axis=0, ignore_index = True)
+    dfout['signal'] = np.where(dfout['min'].abs() > dfout['min'].abs(), -dfout['signal'], dfout['signal'])
+    dfout.drop(['max', 'min'], inplace = True)
+
+    return dfout
