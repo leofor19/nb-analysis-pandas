@@ -27,6 +27,7 @@ Written by: Leonardo Fortaleza
                     NarrowBand.analysis_pd.uncategorize
 """
 # Standard library imports
+from copy import deepcopy
 from datetime import datetime
 import json
 import os
@@ -191,6 +192,9 @@ def subtract_clutter(df, clutter):
         xlabel = 'freq'
     dunit = df.digital_unit.head(1).item()
 
+    clutter = deepcopy(clutter)
+
+    tqdm.pandas()
     df = df.progress_apply(lambda x: uncategorize(x), axis=1)
     if "index" in df.columns:
         df.drop("index", axis=1, inplace=True)
@@ -205,17 +209,28 @@ def subtract_clutter(df, clutter):
     df = df.loc[:,~df.columns.str.contains('subject', case=False, na=False)]
     df = df.loc[:,~df.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
 
-    df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel, "pair", "Tx", "Rx"], inplace=True)
+    # df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel, "pair", "Tx", "Rx"], inplace=True)
+    # df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel], inplace=True)
+    # clutter.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel], inplace=True)
+    clutter.rename(columns={"signal": "clutter"}, inplace = True)
+    # df.merge(clutter['clutter'], how='left', validate = 'many_to_one', left_index = True).reset_index()
+    df = pd.merge(df, clutter, how='left', validate = 'many_to_one', 
+                left_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel],
+                right_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel]).reset_index()
 
-    if "mean".casefold() in df.columns:
-        keys = {"raw_digital_ch1_mean": 0, "raw_digital_ch2_mean": 0, "digital_ch1_mean": 0, "digital_ch2_mean": 0, "n_digital_ch1_mean": 8, "n_digital_ch2_mean": 8}
-    else:
-            keys = {"raw_digital_ch1": 0, "raw_digital_ch2": 0, "digital_ch1": 0, "digital_ch2": 0, "n_digital_ch1": 8, "n_digital_ch2": 8}
-    df = df.subtract(clutter, fill_value=0, axis = 0).round(keys).reset_index()
+    # if "mean".casefold() in df.columns:
+    #     keys = {"raw_digital_ch1_mean": 0, "raw_digital_ch2_mean": 0, "digital_ch1_mean": 0, "digital_ch2_mean": 0, "n_digital_ch1_mean": 8, "n_digital_ch2_mean": 8}
+    # else:
+    #         keys = {"raw_digital_ch1": 0, "raw_digital_ch2": 0, "digital_ch1": 0, "digital_ch2": 0, "n_digital_ch1": 8, "n_digital_ch2": 8}
+    # # df = df.subtract(clutter, fill_value=0, axis = 0).round(keys).reset_index()
+    # df['signal'] = df['signal'].subtract(df['clutter'], fill_value=0, axis = 0).round(keys).reset_index()
+    df['signal'] = df['signal'].subtract(df['clutter'], fill_value=0, axis = 0)
 
     df["digital_unit"] = dunit
     if vunit:
         df["voltage_unit"] = vunit
+
+    df.reset_index(inplace=True)
 
     return df
 
@@ -286,6 +301,7 @@ def avg_trace_clutter(df, progress_bar = True, center='mean', out_as_list = Fals
         else:
             keys = {"raw_digital_ch1": 0, "raw_digital_ch2": 0, "digital_ch1": 0, "digital_ch2": 0, "n_digital_ch1": 8, "n_digital_ch2": 8}
         c = c.round(keys)
+        c.reset_index(inplace=True)
         clutter.append(c)
 
     if len(clutter) == 1:
