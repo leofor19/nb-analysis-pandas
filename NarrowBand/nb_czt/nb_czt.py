@@ -330,9 +330,9 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False, column = 'sig
             for ph in tqdm(td_df.phantom.unique()):
                 for plug in tqdm(td_df.plug.unique(), leave=False):
                     for date in tqdm(td_df.date.unique(), leave=False):
-                        for rep in tqdm(td_df.rep.unique(), leave=False):
-                            for ite in tqdm(td_df.iter.unique(), leave=False):
-                                for p in tqdm(td_df.pair.unique(), leave=False):
+                        for rep in tqdm(td_df.rep.unique(), leave=False, disable = True):
+                            for ite in tqdm(td_df.iter.unique(), leave=False, disable = True):
+                                for p in tqdm(td_df.pair.unique(), leave=False, disable = True):
                                     data = td_df.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) & (td_df.pair.eq(p)),:]
                                     for c in column:
                                         if use_scipy:
@@ -422,10 +422,10 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
             freq = data.freq.unique()
             freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data_shape = np.zeros(freqs.shape, dtype=complex)
-            for pair in tqdm(data.pair.unique(), leave=False):
+            for pair in tqdm(data.pair.unique(), leave=False, disable = True):
                 # creates frequency and CZT data arrays per antenna pair
                 czt_data = deepcopy(czt_data_shape)
-                for f in tqdm(freq, leave=False):
+                for f in tqdm(freq, leave=False, disable = True):
                     czt_data = place_czt_value(czt_data = czt_data, f = f, freqs = freqs, df = data, pair = pair, quadrant = quadrant, I=I, Q=Q, signal=signal)
                 if conj_sym:
                     freqs_out, czt_data = conjugate_symmetric(freqs, czt_data)
@@ -467,7 +467,7 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
             freq = data.freq.unique()
             freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data = np.zeros(freqs.shape, dtype=complex)
-            for f in tqdm(freq, leave=False):
+            for f in tqdm(freq, leave=False, disable = True):
                 czt_data = place_czt_value(czt_data = czt_data, f = f, freqs = freqs, df = data, pair = None, quadrant = quadrant, I=I, Q=Q, signal=signal)
             if conj_sym:
                     freqs_out, czt_data = conjugate_symmetric(freqs, czt_data)
@@ -606,9 +606,9 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
             freq = data.freq.unique()
             freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data_shape = np.zeros(freqs.shape, dtype=complex)
-            for pair in tqdm(data.pair.unique(), leave=False):
+            for pair in tqdm(data.pair.unique(), leave=False, disable = True):
                 czt_data = deepcopy(czt_data_shape)
-                for f in tqdm(freq, leave=False):
+                for f in tqdm(freq, leave=False, disable = True):
                     czt_data = place_czt_value(czt_data = czt_data, f = f, pair = pair, freqs = freqs, df = data, quadrant = quadrant, I=I, Q=Q, signal=signal)
                 if conj_sym:
                     freqs_out, czt_data = conjugate_symmetric(freqs, czt_data)
@@ -661,7 +661,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
             freq = data.freq.unique()
             freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data = np.zeros(freqs.shape, dtype=complex)
-            for f in tqdm(freq, leave=False):
+            for f in tqdm(freq, leave=False, disable = True):
                 czt_data = place_czt_value(czt_data = czt_data, f = f, freqs = freqs, df = data, pair = None, quadrant = quadrant, I=I, Q=Q, signal=signal)
             if conj_sym:
                     freqs_out, czt_data = conjugate_symmetric(freqs, czt_data)
