@@ -1195,11 +1195,9 @@ def correct_positive_pulses3(df, ref, column = 'signal', percent_tol = 0.05):
     # dfout[column] = np.where((1 - percent_tol) * dfout['max'].abs().to_numpy() > dfout['min'].abs().to_numpy() + abs_tol, dfout[column], -dfout[column])
     # dfout.drop(labels= ['index', 'max', 'min'], inplace = True, errors = 'ignore', axis=1)
     dfout[column] = dfout[column] * dfout['sign']
-    # dfout.drop(labels= ['index', 'sign'], inplace = True, errors = 'ignore', axis=1)
+    dfout.drop(labels= ['index', 'sign'], inplace = True, errors = 'ignore', axis=1)
 
     return dfout
-
-
 
 def normalize_pulses(df, column = 'signal'):
 
@@ -1256,6 +1254,6 @@ def normalize2positive_pulses(df, column = 'signal', percent_tol = 0.15, abs_tol
     dfout['min'] = dfout['min'] / dfout['abs_max']
     # dfout[column] = np.where(dfout['min'].abs().to_numpy() > dfout['max'].abs().to_numpy() + tol*dfout['max'].abs().to_numpy(), -dfout[column], dfout[column])
     dfout[column] = np.where((1 - percent_tol) * dfout['max'].abs().to_numpy() > dfout['min'].abs().to_numpy() + abs_tol, dfout[column], -dfout[column])
-    # dfout.drop(labels= ['index', 'abs_max', 'max', 'min'], inplace = True, errors = 'ignore', axis=1)
+    dfout.drop(labels= ['index', 'abs_max', 'max', 'min'], inplace = True, errors = 'ignore', axis=1)
 
     return dfout
