@@ -31,6 +31,7 @@ Written by: Leonardo Fortaleza
                     NarrowBand.analysis_pd.uncategorize
 """
 # Standard library imports
+from calendar import c
 from copy import deepcopy
 from datetime import datetime
 import json
@@ -1162,7 +1163,7 @@ def correct_positive_pulses(df, column = 'signal', drop_columns = ['sample', 'ti
     return dfout
 
 
-def correct_positive_pulses2(df, column = 'signal', drop_columns = ['sample', 'time']):
+def correct_positive_pulses3(df, ref, column = 'signal', percent_tol = 0.05):
 
     if "phantom" in df.columns:
         # splits df in lists of dfs per grouping, criteria depending on 'calibration type 4' (phantom with Tx-off) or 'phantom scan'
@@ -1177,13 +1178,84 @@ def correct_positive_pulses2(df, column = 'signal', drop_columns = ['sample', 't
 
     for data in tqdm(df_list):
         data.reset_index(inplace=True)
-        data['max'] = data[column].max()
-        data['min'] = data[column].min()
+        xcorr = signal.correlate((data[column] - data[column].mean()) / np.std(data[column]), (ref - np.mean(ref)) / np.std(ref), mode='full', method='auto') / min(len(data[column]),len(ref)) # normalized cross-correlation
+        if np.abs((1 - percent_tol) * np.max(xcorr)) > np.abs(np.min(xcorr)):
+            data['sign'] = 1
+        else:
+            data['sign'] = -1
+        # data[column] =  data[column] - data[column].mean()
+        # data['max'] = data[column].max()
+        # data['min'] = data[column].min()
+        # data['sd'] = data[column].std(axis = 0, ddof=1)
 
         processed.append(data)
 
     dfout = pd.concat(processed, axis=0, ignore_index = True)
-    dfout['signal'] = np.where(dfout['min'].abs() > dfout['min'].abs(), -dfout['signal'], dfout['signal'])
-    dfout.drop(['max', 'min'], inplace = True)
+    # dfout[column] = np.where(dfout['min'].abs().to_numpy() > dfout['max'].abs().to_numpy() + tol*dfout['max'].abs().to_numpy(), -dfout[column], dfout[column])
+    # dfout[column] = np.where((1 - percent_tol) * dfout['max'].abs().to_numpy() > dfout['min'].abs().to_numpy() + abs_tol, dfout[column], -dfout[column])
+    # dfout.drop(labels= ['index', 'max', 'min'], inplace = True, errors = 'ignore', axis=1)
+    dfout[column] = dfout[column] * dfout['sign']
+    # dfout.drop(labels= ['index', 'sign'], inplace = True, errors = 'ignore', axis=1)
+
+    return dfout
+
+
+
+def normalize_pulses(df, column = 'signal'):
+
+    if "phantom" in df.columns:
+        # splits df in lists of dfs per grouping, criteria depending on 'calibration type 4' (phantom with Tx-off) or 'phantom scan'
+        if "cal_type" in df.columns:
+            df_list = dfproc.split_df(df, groups=["cal_type", "phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx"])
+        else:
+            df_list = dfproc.split_df(df, groups=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx"])
+    else:
+        df_list = dfproc.split_df(df.loc[df.cal_type.ne(1)], groups=["cal_type", "date", "rep", "iter", "attLO", "attRF"])
+
+    processed = []
+
+    for data in tqdm(df_list):
+        data.reset_index(inplace=True)
+        data[column] =  data[column] - data[column].mean()
+        data['abs_max'] = data[column].abs().max()
+
+        processed.append(data)
+
+    dfout = pd.concat(processed, axis=0, ignore_index = True)
+    dfout[column] = dfout[column] / dfout['abs_max']
+    dfout.drop(labels= ['index', 'abs_max'], inplace = True, errors = 'ignore', axis=1)
+
+    return dfout
+
+def normalize2positive_pulses(df, column = 'signal', percent_tol = 0.15, abs_tol = 0.01):
+
+    if "phantom" in df.columns:
+        # splits df in lists of dfs per grouping, criteria depending on 'calibration type 4' (phantom with Tx-off) or 'phantom scan'
+        if "cal_type" in df.columns:
+            df_list = dfproc.split_df(df, groups=["cal_type", "phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx"])
+        else:
+            df_list = dfproc.split_df(df, groups=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx"])
+    else:
+        df_list = dfproc.split_df(df.loc[df.cal_type.ne(1)], groups=["cal_type", "date", "rep", "iter", "attLO", "attRF"])
+
+    processed = []
+
+    for data in tqdm(df_list):
+        data.reset_index(inplace=True)
+        data[column] =  data[column] - data[column].mean()
+        data['abs_max'] = data[column].abs().max()
+        data['max'] = data[column].max()
+        data['min'] = data[column].min()
+        # data['sd'] = data[column].std(axis = 0, ddof=1).values
+
+        processed.append(data)
+
+    dfout = pd.concat(processed, axis=0, ignore_index = True)
+    dfout[column] = dfout[column] / dfout['abs_max']
+    dfout['max'] = dfout['max'] / dfout['abs_max']
+    dfout['min'] = dfout['min'] / dfout['abs_max']
+    # dfout[column] = np.where(dfout['min'].abs().to_numpy() > dfout['max'].abs().to_numpy() + tol*dfout['max'].abs().to_numpy(), -dfout[column], dfout[column])
+    dfout[column] = np.where((1 - percent_tol) * dfout['max'].abs().to_numpy() > dfout['min'].abs().to_numpy() + abs_tol, dfout[column], -dfout[column])
+    # dfout.drop(labels= ['index', 'abs_max', 'max', 'min'], inplace = True, errors = 'ignore', axis=1)
 
     return dfout
