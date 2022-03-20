@@ -436,6 +436,8 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
                 fd_data["pair"] = pair
                 fd_data["Tx"] = int(data.loc[data.pair.eq(pair), 'Tx'].unique())
                 fd_data["Rx"] = int(data.loc[data.pair.eq(pair), 'Rx'].unique())
+                if "distances" in data.columns:
+                    fd_data["distances"] = data.loc[data.pair.eq(pair), 'distances'].unique()[0]
                 in_process.append(fd_data)
 
             czt_df = pd.concat(in_process, axis=0)
@@ -629,6 +631,8 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
                 td_data["pair"] = pair
                 td_data["Tx"] = int(data.loc[data.pair.eq(pair), 'Tx'].unique())
                 td_data["Rx"] = int(data.loc[data.pair.eq(pair), 'Rx'].unique())
+                if "distances" in data.columns:
+                    td_data["distances"] = data.loc[data.pair.eq(p), 'distances'].unique()[0]
                 in_process.append(td_data)
 
             iczt_df = pd.concat(in_process, axis=0)
@@ -759,6 +763,8 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, 
                 td_data["pair"] = p
                 td_data["Tx"] = int(data.loc[data.pair.eq(p), 'Tx'].unique())
                 td_data["Rx"] = int(data.loc[data.pair.eq(p), 'Rx'].unique())
+                if "distances" in data.columns:
+                    td_data["distances"] = data.loc[data.pair.eq(p), 'distances'].unique()[0]
                 in_process.append(td_data)
 
             iczt_df = pd.concat(in_process, axis=0, ignore_index=True)
@@ -1199,7 +1205,7 @@ def correct_positive_pulses3(df, ref, column = 'signal', percent_tol = 0.05):
 
     return dfout
 
-def normalize_pulses(df, column = 'signal'):
+def normalize_pulses(df, column = 'signal', use_sd = False, ddof=0):
 
     if "phantom" in df.columns:
         # splits df in lists of dfs per grouping, criteria depending on 'calibration type 4' (phantom with Tx-off) or 'phantom scan'
@@ -1214,14 +1220,20 @@ def normalize_pulses(df, column = 'signal'):
 
     for data in tqdm(df_list):
         data.reset_index(inplace=True)
-        data[column] =  data[column] - data[column].mean()
-        data['abs_max'] = data[column].abs().max()
+        if use_sd:
+            data['normalization'] = data[column].std(ddof=ddof)
+            data[column] =  (data[column] - data[column].mean()) / data[column].std(ddof=ddof)
+        else:
+            data[column] =  data[column] - data[column].mean()
+            data['abs_max'] = data[column].abs().max()
 
         processed.append(data)
 
     dfout = pd.concat(processed, axis=0, ignore_index = True)
-    dfout[column] = dfout[column] / dfout['abs_max']
-    dfout.drop(labels= ['index', 'abs_max'], inplace = True, errors = 'ignore', axis=1)
+    if not use_sd:
+        dfout[column] = dfout[column] / dfout['abs_max']
+        data.rename({'abs_max' : 'normalization'} , inplace=True, axis='columns')
+    dfout.drop(labels= ['index'], inplace = True, errors = 'ignore', axis=1)
 
     return dfout
 
@@ -1254,6 +1266,7 @@ def normalize2positive_pulses(df, column = 'signal', percent_tol = 0.15, abs_tol
     dfout['min'] = dfout['min'] / dfout['abs_max']
     # dfout[column] = np.where(dfout['min'].abs().to_numpy() > dfout['max'].abs().to_numpy() + tol*dfout['max'].abs().to_numpy(), -dfout[column], dfout[column])
     dfout[column] = np.where((1 - percent_tol) * dfout['max'].abs().to_numpy() > dfout['min'].abs().to_numpy() + abs_tol, dfout[column], -dfout[column])
-    dfout.drop(labels= ['index', 'abs_max', 'max', 'min'], inplace = True, errors = 'ignore', axis=1)
+    data.rename({'abs_max' : 'normalization'} , inplace=True, axis='columns')
+    dfout.drop(labels= ['index', 'max', 'min'], inplace = True, errors = 'ignore', axis=1)
 
     return dfout

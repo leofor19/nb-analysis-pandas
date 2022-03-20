@@ -369,9 +369,9 @@ def matlab_align_signals(s1, s2, max_delay = None, truncate = True, output_delay
         # use assigned_delay if it's an integer value
         delay = assigned_delay
     elif out_xcorr:
-        delay, xcorr_out = find_delay((s1 - np.mean(s1)) / np.std(s1), (s2 - np.mean(s2)) / np.std(s2), max_delay = max_delay, out_xcorr = out_xcorr) / min(len(s1),len(s2)) # normalized cross-correlation
+        delay, xcorr_out = find_delay(s1, s2, max_delay = max_delay, out_xcorr = out_xcorr) # normalized cross-correlation
     else:
-        delay = find_delay((s1 - np.mean(s1)) / np.std(s1), (s2 - np.mean(s2)) / np.std(s2), max_delay = max_delay, out_xcorr = out_xcorr) / min(len(s1),len(s2)) # normalized cross-correlation
+        delay = find_delay(s1, s2, max_delay = max_delay, out_xcorr = out_xcorr) # normalized cross-correlation
 
     if delay == 0:
         out1 = s1
@@ -456,8 +456,7 @@ def primary_align_signals(s1, s2_fixed, max_delay = None, truncate = True, outpu
         # use assigned_delay if it's an integer value
         delay = assigned_delay
     elif out_xcorr:
-        delay, xcorr_out = find_delay((s1 - np.mean(s1)) / np.std(s1), (s2_fixed - np.mean(s2_fixed)) / np.std(s2_fixed), 
-                                        max_delay = max_delay, out_xcorr = out_xcorr) / min(len(s1),len(s2_fixed)) # normalized cross-correlation
+        delay, xcorr_out = find_delay(s1, s2_fixed, max_delay = max_delay, out_xcorr = out_xcorr) # normalized cross-correlation
     else:
         delay = find_delay(s1, s2_fixed, max_delay = max_delay)
 

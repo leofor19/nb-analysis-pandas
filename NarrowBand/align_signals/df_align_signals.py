@@ -116,8 +116,8 @@ def df_simple_align_signals(df, column = 'signal', sort_col = 'time', max_delay 
 
     for data in tqdm(df_list):
         data.reset_index(inplace=True)
-        for p in tqdm(data.pair.unique(), leave = False):
-            for c in tqdm(column, leave = False):
+        for p in tqdm(data.pair.unique(), leave = False, disable = True):
+            for c in tqdm(column, leave = False, disable = True):
                 data.loc[data.pair.eq(p), c], _ = alsig.align_signals(data.loc[data.pair.eq(p), c], max_delay = max_delay, truncate=truncate, output_delay=False, 
                                                                         assigned_delay=None, method = method, peak_center_offset = peak_center_offset,
                                                                         peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
@@ -300,7 +300,7 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
         df2 = df2.reset_index(drop = False)
 
         for p in df1.pair.unique():
-            for c in tqdm(column, leave = False):
+            for c in tqdm(column, leave = False, disable = True):
                 if fixed_df2:
                     # making sure that the df2 pulse stays fixed, only df1 is shifted (when truncate = True)
                     df1.loc[df1.pair.eq(p), c], df2.loc[df2.pair.eq(p), c] = alsig.align_signals(df1.loc[df1.pair.eq(p), c], df2.loc[df2.pair.eq(p), c], max_delay = max_delay, 
@@ -322,7 +322,7 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
         df2 = df2.reset_index(drop = False)
         # alignment between one phantom scan and one calibration pulse
         for p in df1.pair.unique():
-            for c in tqdm(column, leave = False):
+            for c in tqdm(column, leave = False, disable = True):
                 # making sure that the calibration pulse stays fixed, the phantom scan data is shifted (when truncate = True)
                 df1.loc[df1.pair.eq(p), c], df2.loc[:, c] = alsig.align_signals(df1.loc[df1.pair.eq(p), c].to_numpy(), df2.loc[:, c].to_numpy(), max_delay = max_delay, 
                                                                                         truncate=truncate, output_delay=False, assigned_delay=None, method= 'primary')
@@ -338,7 +338,7 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
         df2 = df2.reset_index(drop = False)
         # alignment between one phantom scan and one calibration pulse
         for p in df2.pair.unique():
-            for c in tqdm(column, leave = False):
+            for c in tqdm(column, leave = False, disable = True):
                 # making sure that the calibration pulse stays fixed, the phantom scan data is shifted (when truncate = True)
                 df2.loc[df2.pair.eq(p), c], df1.loc[:, c] = alsig.align_signals(df2.loc[df2.pair.eq(p), c].to_numpy(), df1.loc[:, c].to_numpy(), max_delay = max_delay, 
                                                                                         truncate=truncate, output_delay=False, assigned_delay=None, method= 'primary')
@@ -355,7 +355,7 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
         df2 = df2.sort_values(by=cols2)
         df1 = df1.reset_index(drop = False)
         df2 = df2.reset_index(drop = False)
-        for c in tqdm(column, leave = False):
+        for c in tqdm(column, leave = False, disable = True):
             # alignment between calibration pulses
             if fixed_df2:
                 # making sure that df2 pulse stays fixed, the phantom scan data is shifted (when truncate = True)
@@ -433,8 +433,8 @@ def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max
         for d in tqdm(data.distances.unique(), leave = False):
             pairs = data.loc[data.distances.eq(d)].pair.unique()
             p1 = pairs[0]
-            for p2 in tqdm(pairs[1:], leave = False):
-                for c in tqdm(column, leave = False):
+            for p2 in tqdm(pairs[1:], leave = False, disable = True):
+                for c in tqdm(column, leave = False, disable = True):
                     data.loc[data.pair.eq(p1), c], data.loc[data.pair.eq(p2), c] = alsig.align_signals(data.loc[data.pair.eq(p1), c], data.loc[data.pair.eq(p2), c], max_delay = max_delay, 
                                                                                                             truncate=truncate, output_delay=False, assigned_delay=None, method= method, 
                                                                                                             peak_center_offset = peak_center_offset, peakLowerBound = peakLowerBound, 
@@ -489,7 +489,7 @@ def df_trim_around_center(df, column = 'sample', length = 168):
             center = (data.loc[:, column].mean / data.pair.nunique()) // 2
         indexNames = data[(data.loc[:, column] < center - length//2) & (data.loc[:, column] > center + length//2)].index
         data.drop(indexNames, axis = 0, inplace = True)
-        for p in tqdm(data.pair.unique(), leave = False):
+        for p in tqdm(data.pair.unique(), leave = False, disable = True):
             data.loc[data.pair.eq(p), 'sample'] = new_samples
         data.reset_index(inplace=True)
         processed.append(data)
