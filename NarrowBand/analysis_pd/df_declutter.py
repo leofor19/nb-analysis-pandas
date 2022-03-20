@@ -168,7 +168,7 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
         dfw.reset_index().to_parquet(out_path, engine=parquet_engine)
         tqdm.write(f"\nSaved file: {out_path}        ")
 
-def subtract_clutter(df, clutter):
+def subtract_clutter(df, clutter, column = 'signal'):
     """Subtract clutter from phantom scan dataframe.
 
     Parameters
@@ -176,13 +176,18 @@ def subtract_clutter(df, clutter):
     df : Pandas df
         input phantom scan DataFrame
     clutter : Pandas df
-       input clutter DataFrame (such as output from avg_trace_clutter functin)
+       input clutter DataFrame (such as output from avg_trace_clutter function)
+    column : str or List[str], optional
+       column to perform subtraction, by default 'signal'
 
     Returns
     -------
     df: Pandas df
         output DataFrame after clutter subtraction
     """
+    if not isinstance(column, list):
+        column = [column]
+
     # checking the x-axis column
     if df.columns.str.contains('time', case=False, na=False).any():
         xlabel = 'time'
@@ -212,7 +217,8 @@ def subtract_clutter(df, clutter):
     # df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel, "pair", "Tx", "Rx"], inplace=True)
     # df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel], inplace=True)
     # clutter.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel], inplace=True)
-    clutter.rename(columns={"signal": "clutter"}, inplace = True)
+    for col in column:
+        clutter.rename(columns={col: "".join((col,"_clutter"))}, inplace = True, errors='ignore')
     # df.merge(clutter['clutter'], how='left', validate = 'many_to_one', left_index = True).reset_index()
     df = pd.merge(df, clutter, how='left', validate = 'many_to_one', 
                 left_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel],
@@ -224,7 +230,9 @@ def subtract_clutter(df, clutter):
     #         keys = {"raw_digital_ch1": 0, "raw_digital_ch2": 0, "digital_ch1": 0, "digital_ch2": 0, "n_digital_ch1": 8, "n_digital_ch2": 8}
     # # df = df.subtract(clutter, fill_value=0, axis = 0).round(keys).reset_index()
     # df['signal'] = df['signal'].subtract(df['clutter'], fill_value=0, axis = 0).round(keys).reset_index()
-    df['signal'] = df['signal'].subtract(df['clutter'], fill_value=0, axis = 0)
+    # clutter_cols = [col for col in df.columns if "_clutter" in col]
+    for c in column:
+        df[c] = df[c].subtract(df["".join((c,"_clutter"))], fill_value=0, axis = 0)
 
     df["digital_unit"] = dunit
     if vunit:
