@@ -91,7 +91,7 @@ def find_delay_old(s1, s2, max_delay = None):
 
     return delay
 
-def find_delay_simple_max_peak(s1, max_delay = None, peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None):
+def find_delay_simple_max_peak(s1, max_delay = None, peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None, align_power = False):
     """Find delay between two signals by centering highest absolute peak at peak_center.
 
     Note that the delay is an integer, indicating the lag by number of samples.
@@ -114,19 +114,23 @@ def find_delay_simple_max_peak(s1, max_delay = None, peak_center_offset = 0, pea
         optional lower bound position for array max (useful for multiple pulses with known expected position), by default None
     peakUpperBound: int or None, optional
         optional upper bound position for array max (useful for multiple pulses with known expected position), by default None
+    align_power : bool, optional
+        set to True to perform alignment using power of signals, by default False
 
     Returns
     -------
     delay : int
         integer output delay, signifying lag by number of samples
     """
-
     if (peakLowerBound is not None) or (peakUpperBound is not None):
         if peakLowerBound is None:
             peakLowerBound = 0
         selection = s1[peakLowerBound:peakUpperBound]
     else:
         selection = s1
+
+    if align_power:
+        s1 = s1**2
 
     array_center = len(s1) // 2
 
@@ -145,7 +149,8 @@ def find_delay_simple_max_peak(s1, max_delay = None, peak_center_offset = 0, pea
 
     return delay
 
-def simple_center_signal_max_peak(s1, max_delay = None, truncate = True, output_delay = False, peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None):
+def simple_center_signal_max_peak(s1, max_delay = None, truncate = True, output_delay = False,
+                                     peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None, align_power = False):
     """Center max peak of single signal by prepending or appending zeroes.
 
     Inputs are expected to be 1-D arrays.
@@ -168,6 +173,8 @@ def simple_center_signal_max_peak(s1, max_delay = None, truncate = True, output_
         optional lower bound position for array max (useful for multiple pulses with known expected position), by default None
     peakUpperBound: int or None, optional
         optional upper bound position for array max (useful for multiple pulses with known expected position), by default None
+    align_power : bool, optional
+        set to True to perform alignment using power of signals, by default False
 
     Returns
     -------
@@ -178,7 +185,8 @@ def simple_center_signal_max_peak(s1, max_delay = None, truncate = True, output_
         integer output delay, signifying lag by number of samples
     """
 
-    delay = find_delay_simple_max_peak(s1, max_delay = max_delay, peak_center_offset = peak_center_offset, peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
+    delay = find_delay_simple_max_peak(s1, max_delay = max_delay, peak_center_offset = peak_center_offset, peakLowerBound = peakLowerBound,
+                                         peakUpperBound = peakUpperBound, align_power = align_power)
 
     if delay == 0:
         out1 = s1
@@ -208,7 +216,8 @@ def simple_center_signal_max_peak(s1, max_delay = None, truncate = True, output_
     else:
         return out1
 
-def simple_align_signals_max_peak(s1, s2 = None, max_delay = None, truncate = True, output_delay = False, peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None):
+def simple_align_signals_max_peak(s1, s2 = None, max_delay = None, truncate = True, output_delay = False,
+                                     peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None, align_power = False):
     """Center max peaks of two signal by prepending or appending zeroes.
 
     Inputs are expected to be 1-D arrays.
@@ -235,6 +244,8 @@ def simple_align_signals_max_peak(s1, s2 = None, max_delay = None, truncate = Tr
         optional lower bound position for array max (useful for multiple pulses with known expected position), by default None
     peakUpperBound: int or None, optional
         optional upper bound position for array max (useful for multiple pulses with known expected position), by default None
+    align_power : bool, optional
+        set to True to perform alignment using power of signals, by default False
 
     Returns
     -------
@@ -249,10 +260,10 @@ def simple_align_signals_max_peak(s1, s2 = None, max_delay = None, truncate = Tr
     """
 
     out1, delay1 = simple_center_signal_max_peak(s1, max_delay = max_delay, truncate = truncate, output_delay = True, peak_center_offset = peak_center_offset,
-                                                 peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
+                                                 peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound, align_power = align_power)
     if s2 is not None:
         out2, delay2 = simple_center_signal_max_peak(s2, max_delay = max_delay, truncate = truncate, output_delay = True, peak_center_offset = peak_center_offset,
-                                                    peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
+                                                    peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound, align_power = align_power)
     else:
         out2 = None
         delay2 = 0
@@ -263,7 +274,7 @@ def simple_align_signals_max_peak(s1, s2 = None, max_delay = None, truncate = Tr
     else:
         return out1, out2
 
-def find_delay(s1, s2, max_delay = None, out_xcorr = False):
+def find_delay(s1, s2, max_delay = None, out_xcorr = False, align_power = False):
     """Find delay between two signals using cross-correlation.
 
     Note that the delay is an integer, indicating the lag by number of samples.
@@ -285,6 +296,8 @@ def find_delay(s1, s2, max_delay = None, out_xcorr = False):
         optional maximum tolerated delay, by default None
     out_xcorr : bool, optional
         set to True to output cross-correlation, by default False
+    align_power : bool, optional
+        set to True to perform alignment using power of signals, by default False
 
     Returns
     -------
@@ -294,8 +307,13 @@ def find_delay(s1, s2, max_delay = None, out_xcorr = False):
         returned if out_xcorr is set to True
         cross-correlation result between arrays
     """
-    s1 = np.real_if_close(s1, tol = 10000)
-    s2 = np.real_if_close(s2, tol = 10000)
+    if align_power:
+        s1 = s1**2
+        s2 = s2**2
+    else:
+        s1 = np.real_if_close(s1, tol = 10000)
+        s2 = np.real_if_close(s2, tol = 10000)
+
     xcorr1 = signal.correlate((s1 - np.mean(s1)) / np.std(s1), (s2 - np.mean(s2)) / np.std(s2), mode='full', method='auto') / min(len(s1),len(s2)) # normalized cross-correlation
     lags1 = signal.correlation_lags(np.size(s1), np.size(s2), mode='full')
     delay1 = -lags1[np.argmax(np.abs(xcorr1))]
@@ -326,7 +344,7 @@ def find_delay(s1, s2, max_delay = None, out_xcorr = False):
     else:
         return delay
 
-def matlab_align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False):
+def matlab_align_signals(s1, s2, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False, align_power = False):
     """Align two signals by delaying earliest signal.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
@@ -351,6 +369,8 @@ def matlab_align_signals(s1, s2, max_delay = None, truncate = True, output_delay
         optional value for delay bypassing find_delay function, by default None
     out_xcorr : bool, optional
         set to True to output cross-correlation, by default False
+    align_power : bool, optional
+        set to True to perform alignment using power of signals, by default False
 
     Returns
     -------
@@ -369,9 +389,9 @@ def matlab_align_signals(s1, s2, max_delay = None, truncate = True, output_delay
         # use assigned_delay if it's an integer value
         delay = assigned_delay
     elif out_xcorr:
-        delay, xcorr_out = find_delay(s1, s2, max_delay = max_delay, out_xcorr = out_xcorr) # normalized cross-correlation
+        delay, xcorr_out = find_delay(s1, s2, max_delay = max_delay, out_xcorr = out_xcorr, align_power = align_power) # normalized cross-correlation
     else:
-        delay = find_delay(s1, s2, max_delay = max_delay, out_xcorr = out_xcorr) # normalized cross-correlation
+        delay = find_delay(s1, s2, max_delay = max_delay, out_xcorr = out_xcorr, align_power = align_power) # normalized cross-correlation
 
     if delay == 0:
         out1 = s1
@@ -413,7 +433,7 @@ def matlab_align_signals(s1, s2, max_delay = None, truncate = True, output_delay
     else:
         return out1, out2
 
-def primary_align_signals(s1, s2_fixed, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False):
+def primary_align_signals(s1, s2_fixed, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False, align_power = False):
     """Align two signals by delaying or anticipating first signal, second signal remains fixed.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
@@ -438,6 +458,8 @@ def primary_align_signals(s1, s2_fixed, max_delay = None, truncate = True, outpu
         optional value for delay bypassing find_delay function, by default None
     out_xcorr : bool, optional
         set to True to output cross-correlation, by default False
+    align_power : bool, optional
+        set to True to perform alignment using power of signals, by default False
 
     Returns
     -------
@@ -456,9 +478,9 @@ def primary_align_signals(s1, s2_fixed, max_delay = None, truncate = True, outpu
         # use assigned_delay if it's an integer value
         delay = assigned_delay
     elif out_xcorr:
-        delay, xcorr_out = find_delay(s1, s2_fixed, max_delay = max_delay, out_xcorr = out_xcorr) # normalized cross-correlation
+        delay, xcorr_out = find_delay(s1, s2_fixed, max_delay = max_delay, out_xcorr = out_xcorr, align_power = align_power) # normalized cross-correlation
     else:
-        delay = find_delay(s1, s2_fixed, max_delay = max_delay)
+        delay = find_delay(s1, s2_fixed, max_delay = max_delay, align_power = align_power)
 
     if delay == 0:
         out1 = s1
@@ -499,7 +521,7 @@ def primary_align_signals(s1, s2_fixed, max_delay = None, truncate = True, outpu
         return out1, out2
 
 def align_signals(s1, s2 = None, max_delay = None, truncate = True, output_delay = False, assigned_delay = None, out_xcorr = False, method = 'primary',
-                     peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None):
+                     peak_center_offset = 0, peakLowerBound = None, peakUpperBound = None, align_power = False):
     """Align two signals.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
@@ -543,6 +565,8 @@ def align_signals(s1, s2 = None, max_delay = None, truncate = True, output_delay
     peakUpperBound: int or None, optional
         optional upper bound position for array max (useful for multiple pulses with known expected position), by default None
         (for 'simple' method only)
+    align_power : bool, optional
+        set to True to perform alignment using power of signals, by default False
 
     Returns
     -------
@@ -559,13 +583,15 @@ def align_signals(s1, s2 = None, max_delay = None, truncate = True, output_delay
     """
 
     if (method.casefold() == 'primary') or (method.casefold() == 'fixed'):
-        output = primary_align_signals(s1, s2_fixed = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, out_xcorr = out_xcorr)
+        output = primary_align_signals(s1, s2_fixed = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, 
+                                        out_xcorr = out_xcorr, align_power = align_power)
     elif (method.casefold() == 'matlab'):
-        output = matlab_align_signals(s1, s2 = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay, out_xcorr = out_xcorr)
+        output = matlab_align_signals(s1, s2 = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, assigned_delay = assigned_delay,
+                                         out_xcorr = out_xcorr, align_power = align_power)
     elif (method.casefold() == 'simple') or (method.casefold() == 'max_peak'):
         out_xcorr = False
         output = simple_align_signals_max_peak(s1, s2 = s2, max_delay = max_delay, truncate = truncate, output_delay = output_delay, 
-                                                peak_center_offset = peak_center_offset, peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound)
+                                                peak_center_offset = peak_center_offset, peakLowerBound = peakLowerBound, peakUpperBound = peakUpperBound, align_power = align_power)
     else:
         print("Align Signals method not available. Please select 'primary' , 'matlab' or 'simple'.")
         return 0
