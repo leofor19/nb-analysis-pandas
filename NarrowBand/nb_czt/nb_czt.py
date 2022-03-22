@@ -283,7 +283,7 @@ def place_czt_value(czt_data, f, freqs, df, pair = None, quadrant = 1, I=2, Q=1,
 
     return czt_data_out
 
-def apply_fft_window(td_df, window_type = 'hann', use_scipy=False, column = 'signal'):
+def apply_fft_window(td_df, window_type = 'hann', use_scipy=False, column = 'signal', conj_sym = False ):
     """Apply window to time-domain for reducing sidelobes due to FFT of incoherently sampled data.
 
         Window type is a case INsensitive string and can be one of:
@@ -311,6 +311,8 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False, column = 'sig
         some window types require tuples for window_type
     column: str or List[str], optional
         df column to apply window, by default 'signal'
+    conj_sym: bool, optional
+        set to True to apply window separately to negative and positive frequencies, by default False
 
     Returns
     -------
@@ -335,12 +337,21 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False, column = 'sig
                                 for p in tqdm(td_df.pair.unique(), leave=False, disable = True):
                                     data = td_df.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) & (td_df.pair.eq(p)),:]
                                     for c in column:
-                                        if use_scipy:
-                                            window = signal.get_window(window=window_type, Nx = data[c].size, fft_bins = True)
-                                        elif isinstance(window_type,np.ndarray):
-                                            window = window_type
+                                        if conj_sym:
+                                            if use_scipy:
+                                                window = signal.get_window(window=window_type, Nx = (data[c].size - 1)/2, fft_bins = True)
+                                            elif isinstance(window_type,np.ndarray):
+                                                window = window_type
+                                            else:
+                                                window = fft_window((data[c].size - 1)/2, window_type=window_type)
+                                            window = np.concatenate((window,np.zeros(1),window))
                                         else:
-                                            window = fft_window(data[c].size, window_type=window_type)
+                                            if use_scipy:
+                                                window = signal.get_window(window=window_type, Nx = data[c].size, fft_bins = True)
+                                            elif isinstance(window_type,np.ndarray):
+                                                window = window_type
+                                            else:
+                                                window = fft_window(data[c].size, window_type=window_type)
                                         td_df_out.loc[(td_df.phantom.eq(ph)) & (td_df.plug.eq(plug)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)) 
                                                         & (td_df.pair.eq(p)), c] = data[c].multiply(window, axis = 0)
         else:
@@ -350,17 +361,26 @@ def apply_fft_window(td_df, window_type = 'hann', use_scipy=False, column = 'sig
                         for ite in tqdm(td_df.iter.unique(), leave=False):
                             data = td_df.loc[(td_df.cal_type.eq(cal_type)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)),:]
                             for c in column:
-                                if use_scipy:
-                                    window = signal.get_window(window=window_type, Nx = data[c].size, fft_bins = True)
-                                elif isinstance(window_type,np.ndarray):
-                                    window = window_type
+                                if conj_sym:
+                                    if use_scipy:
+                                        window = signal.get_window(window=window_type, Nx = (data[c].size - 1)/2, fft_bins = True)
+                                    elif isinstance(window_type,np.ndarray):
+                                        window = window_type
+                                    else:
+                                        window = fft_window((data[c].size - 1)/2, window_type=window_type)
+                                    window = np.concatenate((window,np.zeros(1),window))
                                 else:
-                                    window = fft_window(data[c].size, window_type=window_type)
+                                    if use_scipy:
+                                        window = signal.get_window(window=window_type, Nx = data[c].size, fft_bins = True)
+                                    elif isinstance(window_type,np.ndarray):
+                                        window = window_type
+                                    else:
+                                        window = fft_window(data[c].size, window_type=window_type)
                                 td_df_out.loc[(td_df.cal_type.eq(cal_type)) & (td_df.date.eq(date)) & (td_df.rep.eq(rep)) & (td_df.iter.eq(ite)), c] = data[c].multiply(window, axis = 0)
         return td_df_out
 
-def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, conj_sym=False, auto_complex_plane = False, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6,
-                        extra_freqs = 0, verbose = False):
+def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, conj_sym_partial = False, conj_sym=False, auto_complex_plane = False,
+                        quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, extra_freqs = 0, verbose = False):
     """Convert phantom data scan DataFrame into new Dataframe with reconstructed CZT signals.
 
     The new DataFrame contains columns for each antenna pair, for which there are two subcolumns: frequencies and simulated CZT signal.
@@ -378,8 +398,10 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
         set to None for use of minimum frequency difference within df or else set a value, by default None
     min_freq : float, optional
         set to None for use of 0 or the minimum frequency of freqs array (negative values), otherwise set a value, by default None
+    conj_sym_partial: bool, optional (default False)
+        set to True to convert FD signal to conjugate symmetrical (to force real signal) without zero padding, by default False
     conj_sym: bool, optional (default False)
-        set to True to convert FD signal to conjugate symmetrical (to force real signal), by default False
+        set to True to convert FD signal to conjugate symmetrical (to force real signal) with zero padding, by default False
     auto_complex_plane: bool, optional (default True)
         set to True to automatically estimate Complex Plane quadrant and I-ch, Q-ch number, by default True
     quadrant : int, optional
@@ -427,7 +449,9 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
                 czt_data = deepcopy(czt_data_shape)
                 for f in tqdm(freq, leave=False, disable = True):
                     czt_data = place_czt_value(czt_data = czt_data, f = f, freqs = freqs, df = data, pair = pair, quadrant = quadrant, I=I, Q=Q, signal=signal)
-                if conj_sym:
+                if conj_sym_partial:
+                    freqs_out, czt_data = conjugate_symmetric_partial(freqs, czt_data)
+                elif conj_sym:
                     freqs_out, czt_data = conjugate_symmetric(freqs, czt_data)
                 else:
                     freqs_out = freqs
@@ -471,8 +495,10 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
             czt_data = np.zeros(freqs.shape, dtype=complex)
             for f in tqdm(freq, leave=False, disable = True):
                 czt_data = place_czt_value(czt_data = czt_data, f = f, freqs = freqs, df = data, pair = None, quadrant = quadrant, I=I, Q=Q, signal=signal)
-            if conj_sym:
-                    freqs_out, czt_data = conjugate_symmetric(freqs, czt_data)
+            if conj_sym_partial:
+                freqs_out, czt_data = conjugate_symmetric_partial(freqs, czt_data)
+            elif conj_sym:
+                freqs_out, czt_data = conjugate_symmetric(freqs, czt_data)
             else:
                 freqs_out = freqs
             czt_df = pd.DataFrame({'freq': freqs_out, 'czt': czt_data})
@@ -494,7 +520,7 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
     df_out = pd.concat(processed, axis=0, ignore_index=True)
     return df_out
 
-def array_invert_to_time_domain(freqs, czt_data, t = None):
+def array_invert_to_time_domain(freqs, czt_data, t = None, df = None):
 
     if not check_symmetric(czt_data, tol=1e-8):
         freqs, czt_data = conjugate_symmetric(freqs, czt_data)
@@ -502,9 +528,9 @@ def array_invert_to_time_domain(freqs, czt_data, t = None):
     if t == 'auto':
         t =  t = auto_time_array(freqs, step_division = 1)
 
-    N = int(len(czt_data)/2)
-    time, sig_t = czt.freq2time(freqs, czt_data, t = t)
-    return time, N*sig_t
+    # N = int(len(czt_data)/2)
+    time, sig_t = czt.freq2time(freqs, czt_data, t = t, df = None)
+    return time, sig_t
 
 def iczt_spectral_zoom(freqs, czt_data, length = None, fs = None, f1 = None, f2 = None, t = 'auto'):
 
@@ -537,7 +563,7 @@ def iczt_spectral_zoom(freqs, czt_data, length = None, fs = None, f1 = None, f2 
 
     return signal
 
-def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym=False, auto_complex_plane = False, 
+def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', min_freq = None, conj_sym_partial=False, conj_sym=False, auto_complex_plane = False, 
                                 quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6, extra_freqs = 0, verbose = False, periods = 1, step_division = 1, tstep = 5e-10):
     """Convert phantom data scan DataFrame into new Dataframe with converted ICZT signals.
 
@@ -559,9 +585,12 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
         set to None for standard FFT time sweep
     min_freq : float, optional
         set to None for use of 0 or the minimum frequency of freqs array (negative values), otherwise set a value, by default None
+    conj_sym_partial: bool, optional (default False)
+        set to True to convert FD signal to conjugate symmetrical (to force real signal) without zero padding, by default False
+        when both conj_sym_part and conj_sym are set to False, extracts real part of the TD signal automatically
     conj_sym: bool, optional (default False)
-        set to True to convert FD signal to conjugate symmetrical (to force real signal), by default False
-        when set to False, extracts real part of the TD signal automatically
+        set to True to convert FD signal to conjugate symmetrical (to force real signal) with zero padding, by default False
+        when both conj_sym_part and conj_sym are set to False, extracts real part of the TD signal automatically
     auto_complex_plane: bool, optional (default True)
         set to True to automatically estimate Complex Plane quadrant and I-ch, Q-ch number, by default True
     quadrant : int, optional
@@ -612,21 +641,25 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
                 czt_data = deepcopy(czt_data_shape)
                 for f in tqdm(freq, leave=False, disable = True):
                     czt_data = place_czt_value(czt_data = czt_data, f = f, pair = pair, freqs = freqs, df = data, quadrant = quadrant, I=I, Q=Q, signal=signal)
-                if conj_sym:
-                    freqs_out, czt_data = conjugate_symmetric(freqs, czt_data)
+                if conj_sym_partial:
+                    freqs_out, czt_data = conjugate_symmetric_partial(freqs.to_numpy(), czt_data.to_numpy())
+                elif conj_sym:
+                    freqs_out, czt_data = conjugate_symmetric(freqs.to_numpy(), czt_data.to_numpy())
                 else:
                     freqs_out = freqs
                 if t == 'auto':
                     t2 = auto_time_array(freqs_out, periods = periods, step_division = step_division, start = None, tstep = tstep)
                 else:
                     t2 = t
-                N = int(len(czt_data)/2)
+                # N = int(len(czt_data)/2)
                 time, sig_t = czt.freq2time(freqs_out, czt_data, t = t2)
-                if not conj_sym:
+                if (not conj_sym) and (not conj_sym_partial):
                     sig_t = np.real(sig_t)
                     if freqs[0] >= 0:
                         sig_t = 2*sig_t # magnitude correction for using only positive frequencies
-                td_data = pd.concat([pd.DataFrame({'sample': np.arange(0,len(sig_t))}), pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
+                else:
+                    sig_t = np.real_if_close(sig_t, tol = 1e-5) # to favor real signals
+                td_data = pd.concat([pd.DataFrame({'sample': np.arange(0,len(sig_t))}), pd.DataFrame({'time': time}),  pd.DataFrame({'signal': sig_t})], axis=1)
                 # td_data.columns = pd.MultiIndex.from_product([[pair],['time','signal']])
                 td_data["pair"] = pair
                 td_data["Tx"] = int(data.loc[data.pair.eq(pair), 'Tx'].unique())
@@ -667,21 +700,25 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
             czt_data = np.zeros(freqs.shape, dtype=complex)
             for f in tqdm(freq, leave=False, disable = True):
                 czt_data = place_czt_value(czt_data = czt_data, f = f, freqs = freqs, df = data, pair = None, quadrant = quadrant, I=I, Q=Q, signal=signal)
-            if conj_sym:
-                    freqs_out, czt_data = conjugate_symmetric(freqs, czt_data)
+            if conj_sym_partial:
+                freqs_out, czt_data = conjugate_symmetric_partial(freqs.to_numpy(), czt_data.to_numpy())
+            elif conj_sym:
+                freqs_out, czt_data = conjugate_symmetric(freqs.to_numpy(), czt_data.to_numpy())
             else:
                 freqs_out = freqs
             if t == 'auto':
                 t2 = auto_time_array(freqs_out, periods = periods, step_division = step_division, start = None, tstep = tstep)
             else:
                 t2 = t
-            N = int(len(czt_data)/2)
+            # N = int(len(czt_data)/2)
             time, sig_t = czt.freq2time(freqs_out, czt_data, t = t2)
-            if not conj_sym:
+            if (not conj_sym) and (not conj_sym_partial):
                 sig_t = np.real(sig_t)
                 if freqs[0] >= 0:
                     sig_t = 2*sig_t # magnitude correction for using only positive frequencies
-            iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_t)), 'time': time, 'signal': N*sig_t})
+            else:
+                sig_t = np.real_if_close(sig_t, tol = 1e-5) # to favor real signals
+            iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_t)), 'time': time, 'signal': sig_t})
 
             iczt_df["cal_type"] = data.cal_type.unique()[0]
             iczt_df["date"] = data.date.unique()[0]
@@ -700,7 +737,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
     df_out = pd.concat(processed, axis=0, ignore_index=True)
     return df_out
 
-def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, step_division = 1, tstep = 5e-10):
+def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym_partial = False, conj_sym = False, periods = 1, step_division = 1, tstep = 5e-10):
     """Convert CZT DataFrame into new Dataframe with converted ICZT signals.
 
     The new DataFrame contains columns for each antenna pair, for which there are two subcolumns: frequencies and converted ICZT signal.
@@ -713,9 +750,12 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, 
         DataFrame with reconstructed CZT signals (frequency domain)
     t : np.ndarray
         time for output signal, optional, defaults to standard FFT time sweep
+    conj_sym_partial: bool, optional (default False)
+        set to True to convert FD signal to conjugate symmetrical (to force real signal) without zero padding, by default False
+        when both conj_sym_part and conj_sym are set to False, extracts real part of the TD signal automatically
     conj_sym: bool, optional (default True)
         set to True to convert FD signal to conjugate symmetrical (to force real signal), by default False
-        when set to False, extracts real part of the TD signal automatically
+        when both conj_sym_part and conj_sym are set to False, extracts real part of the TD signal automatically
     periods : int, optional
         number of periods to use, by default 1
     step_division : int, optional
@@ -743,8 +783,10 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, 
             in_process = []
             for p in data.pair.unique():
                 scan = data.loc[(data.pair.eq(p))]
-                if conj_sym:
-                    freqs, czt_data = conjugate_symmetric(scan.freq,scan.czt)
+                if conj_sym_partial:
+                    freqs, czt_data = conjugate_symmetric_partial(scan.freq.to_numpy(),scan.czt.to_numpy())
+                elif conj_sym:
+                    freqs, czt_data = conjugate_symmetric(scan.freq.to_numpy(),scan.czt.to_numpy())
                 else:
                     freqs = scan.freq.to_numpy()
                     czt_data = scan.czt.to_numpy()
@@ -752,13 +794,15 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, 
                     t2 = auto_time_array(freqs*1e6, periods = periods, step_division = step_division, start = None, tstep = tstep)
                 else:
                     t2 = t
-                N = int(len(czt_data)/2)
+                # N = int(len(czt_data)/2)
                 time, sig_t = czt.freq2time(freqs, czt_data, t=t2)
-                if not conj_sym:
+                if (not conj_sym) and (not conj_sym_partial):
                     sig_t = np.real(sig_t)
                     if freqs[0] >= 0:
                         sig_t = 2*sig_t # magnitude correction for using only positive frequencies
-                td_data = pd.concat([pd.DataFrame({'sample': np.arange(0,len(sig_t))}), pd.DataFrame({'time': time}),  pd.DataFrame({'signal': N*sig_t})], axis=1)
+                else:
+                    sig_t = np.real_if_close(sig_t, tol = 1e-5) # to favor real signals
+                td_data = pd.concat([pd.DataFrame({'sample': np.arange(0,len(sig_t))}), pd.DataFrame({'time': time}),  pd.DataFrame({'signal': sig_t})], axis=1)
                 # td_data.columns = pd.MultiIndex.from_product([[p],['time','signal']])
                 td_data["pair"] = p
                 td_data["Tx"] = int(data.loc[data.pair.eq(p), 'Tx'].unique())
@@ -792,8 +836,10 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, 
 
         processed = []
         for data in tqdm(df_list):
-            if conj_sym:
-                freqs, czt_data = conjugate_symmetric(data.freq,data.czt)
+            if conj_sym_partial:
+                freqs, czt_data = conjugate_symmetric_partial(data.freq.to_numpy(),data.czt.to_numpy())
+            elif conj_sym:
+                freqs, czt_data = conjugate_symmetric(data.freq.to_numpy(),data.czt.to_numpy())
             else:
                 freqs = data.freq.to_numpy()
                 czt_data = data.czt.to_numpy()
@@ -801,13 +847,15 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym=False, periods = 1, 
                     t2 = auto_time_array(freqs, periods = periods, step_division = step_division, start = None, tstep = tstep)
             else:
                 t2 = t
-            N = int(len(czt_data)/2)
+            # N = int(len(czt_data)/2)
             time, sig_t = czt.freq2time(freqs, czt_data, t=t2)
-            if not conj_sym:
+            if (not conj_sym) and (not conj_sym_partial):
                 sig_t = np.real(sig_t)
                 if freqs[0] >= 0:
                     sig_t = 2*sig_t # magnitude correction for using only positive frequencies
-            iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_t)), 'time': time, 'signal': N*sig_t})
+            else:
+                sig_t = np.real_if_close(sig_t, tol = 1e-5) # to favor real signals
+            iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_t)), 'time': time, 'signal': sig_t})
 
             iczt_df["cal_type"] = data.cal_type.unique()[0]
             iczt_df["date"] = data.date.unique()[0]
@@ -898,6 +946,85 @@ def conjugate_symmetric(x, y):
 
     return x_out, y_out
 
+def conjugate_symmetric_partial(x, y, verbose = False):
+    """Return conjugate symmetric array for y and correspondent x array with negative values, but only with requested bins and x = 0.
+
+    Conjugate symmetric vectors respect the relation y[x] = y*[-x]. In order for an IFFT signal to be real valued, the FFT signal needs to be conjugate symmetric.
+
+    Output is in FFT-format convention, so that y[0] is the DC component/average, y[1:n/2+2] corresponds to increasing positive values of x
+    and y[n/2+1:] corresponds to negative values of x.
+
+    The function first checks if the lengths of x and y are the same, then checks if x only has positive values.
+    If these conditions are not met and y isn't already conjugate symmetric, the funtion is interrupted
+    and returns 0. If there are negative values for x *and* y is already conjugate symmetric, it returns the unaltered arrays.
+
+    If x is strictly positive and missing zero, both x and y arrays are extended with an extra zero sample.
+
+    Finally, both arrays are extended, x with negative values and y with conjugate symmetric values.
+
+    Parameters
+    ----------
+    x : array-like
+        array to include negative values (time or frequency)
+    y : array-like
+        array to become conjugate symmetric (signal)
+    verbose: bool, optional
+        set to True to output "x array missing zero, padding arrays." message when needed, by default False
+
+    Returns
+    -------
+    x_out : array-like
+        array with negative values
+    y_out : array-like
+        conjugate symmetric array
+    """
+    if len(x) != len(y):
+        tqdm.write("x and y arrays have different lengths!")
+        return 0
+
+    if np.min(x) < 0:
+        if check_symmetric(y):
+            # y is already conjugate symmetric, returns unchanged arrays
+            return x, y
+        else:
+            if verbose:
+                tqdm.write("x array already has negative values but not conjugate symmetric, please verify.")
+            return x, y
+    elif np.round(np.min(x)) != 0:
+        if verbose:
+            tqdm.write("x array missing zero, padding arrays.")
+        x = np.concatenate((np.zeros(1), x))
+        # pads y array with zeroes to match the new x array
+        y = np.concatenate((np.zeros(1), y))
+    else:
+        pass
+
+    # allocating arrays, y_out needs to be explicitly complex
+    n = len(x) - 1
+    x_out = np.zeros(2*n + 1)
+    y_out = np.zeros(2*n + 1, dtype=complex)
+    reversed = y[::-1]
+    reversed_x = x[::-1]
+
+    # # obtaining step value for x
+    # nx = len(x)
+    # xspan = x[-1] - x[0]
+    # dx = xspan / (nx - 1)  # more accurate than x[1] - x[0]
+
+    # output arrays in natural order
+    x_out[0:n] = - reversed_x[:-1]
+    x_out[n:] = x
+    y_out[0:n+1] = np.conjugate(reversed[:n+1])
+    y_out[n:] = y
+
+    # # output arrays in FFT convention
+    # x_out[0:n+1] = x
+    # x_out[n+1:] = - reversed_x[:-1]
+    # y_out[0:n+1] = y
+    # y_out[n+1:] = np.conjugate(reversed[:-1])
+
+    return x_out, y_out
+
 def conjugate_symmetric_fft_format(x, y):
     """Return FFT-format conjugate symmetric array for y and correspondent x array with negative values.
 
@@ -933,6 +1060,8 @@ def conjugate_symmetric_fft_format(x, y):
 
 def check_symmetric(a, tol=1e-8):
     """Check if array is conjugate symmetric.
+
+    Note that this doesn't seem to work for FFT-format array.
 
     Adapted from https://stackoverflow.com/questions/42908334/checking-if-a-matrix-is-symmetric-in-numpy
 

@@ -509,3 +509,104 @@ def df_trim_around_center(df, column = 'sample', length = 168):
     df_out = pd.concat(processed, axis=0)
 
     return df_out
+
+def df_trim2starting_zero(df, ycolumn = 'signal', xcolumn = ['sample', 'time'], tol2peak = 0.02):
+    """Trim dataframe signals, dropping signal edges longer/shorter than center +- length/2.
+
+    Function designed to use 'sample' column and replaces it with new values [0 to (length-1)].
+
+    Parameters
+    ----------
+    df : Pandas df
+        input dataframe
+    column : str, optional
+        column to compare for dropping, by default 'sample'
+    length : int or float, optional
+        target length of signals, by default 168
+        could also be used for time/frequency values
+
+    Returns
+    -------
+    df_out: Pandas df
+        output dataframe with trimmed signals
+    """
+    if not isinstance(xcolumn, list):
+        xcolumn = [xcolumn]
+
+    processed = []
+
+    if "phantom" in df.columns:
+        # splits df in lists of dfs per grouping, criteria depending on 'calibration type 4' (phantom with Tx-off) or 'phantom scan'
+        if "cal_type" in df.columns:
+            df_list = dfproc.split_df(df, groups=["cal_type", "phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"])
+        else:
+            df_list = dfproc.split_df(df, groups=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"])
+
+        for data in tqdm(df_list):
+            data.reset_index(inplace=True)
+            for p in tqdm(data.pair.unique(), leave = False, disable = True):
+                new_x = []
+                for x in xcolumn:
+                    new_x.append([data.loc[data.pair.unique(), x].min(), data.loc[data.pair.unique(), x].max(),
+                                    (data.loc[data.pair.unique(), x].max() - data.loc[data.pair.unique(), x].min()) / (data.loc[data.pair.unique(), x].size - 1)])
+                indexNames = data[(data.loc[data.pair.unique(), ycolumn] < tol2peak * data.loc[data.pair.unique(), ycolumn].max()) &
+                                    (data.loc[data.pair.unique(), ycolumn] >  - tol2peak * data.loc[data.pair.unique(), ycolumn].max())].index
+                data.drop(indexNames, axis = 0, inplace = True)
+                for i, x in enumerate(xcolumn):
+                    data.loc[data.pair.eq(p), x] = [np.arange(new_x[i][0], new_x[i][2] * (data.loc[data.pair.unique(), ycolumn].size + 1), step = new_x[i][2] )]
+            data.reset_index(inplace=True)
+            processed.append(data)
+
+    else:
+        df_list = dfproc.split_df(df.loc[df.cal_type.ne(1)], groups=["cal_type", "date", "rep", "iter", "attLO", "attRF"])
+
+        for data in tqdm(df_list):
+            data.reset_index(inplace=True)
+            new_x = []
+            for x in xcolumn:
+                new_x.append([data.loc[:, x].min(), data.loc[:, x].max(),
+                                (data.loc[:, x].max() - data.loc[:, x].min()) / (data.loc[:, x].size - 1)])
+            indexNames = data[(data.loc[:, ycolumn] < tol2peak * data.loc[:, ycolumn].max()) &
+                                (data.loc[:, ycolumn] >  - tol2peak * data.loc[:, ycolumn].max())].index
+            data.drop(indexNames, axis = 0, inplace = True)
+            for i, x in enumerate(xcolumn):
+                data.loc[:, x] = [np.arange(new_x[i][0], new_x[i][2] * (data.loc[:, ycolumn].size + 1), step = new_x[i][2])]
+            data.reset_index(inplace=True)
+            processed.append(data)
+
+    df_out = pd.concat(processed, axis=0)
+
+    return df_out
+
+def find_zero_crossings(df, column = 'signal', method = 1):
+    """Return dataframe rows that have zero crossings.
+
+    From: https://stackoverflow.com/questions/63690860/pandas-how-to-find-values-that-cross-zero
+
+    Parameters
+    ----------
+    df : _type_
+        _description_
+    """
+    if method == 1:
+        return df[np.sign(df[column]).diff().fillna(0).ne(0)].copy()
+    else:
+        mask1 = (df['Value'] < 0)
+        mask2 = (df['Value'] > 0).shift()
+
+        mask3 = (df['Value'] > 0)
+        mask4 = (df['Value'] < 0).shift()
+
+        return df.loc[(mask1 & mask2) | (mask3 & mask4)].copy()
+
+def zero_crossing(data):
+    """Return indexes of array that have zero crossings.
+
+    From: https://stackoverflow.com/questions/63619278/python-detect-zero-crossing-in-a-dataframe
+
+    Parameters
+    ----------
+    df : _type_
+        _description_
+    """
+    return np.where(np.diff(np.sign(np.array(data))))[0]

@@ -36,6 +36,8 @@ CZT reference:
 CZT computation reference:
     Sukhoy, V., Stoytchev, A. "Generalizing the inverse FFT off the unit
     circle," Sci Rep 9, 14443 (2019).
+
+Modified by Leonardo Fortaleza
 """
 
 import numpy as np
@@ -256,21 +258,23 @@ def time2freq(t, x, f=None):
     return f, freq_data
 
 
-def freq2time(f, X, t=None):
+def freq2time(f, X, t=None, df = None):
     """Transform a frequency-domain signal to the time-domain.
     Args:
         f (np.ndarray): frequency
         X (np.ndarray): frequency-domain signal
         t (np.ndarray): time for output signal, optional, defaults to standard
             FFT time sweep
+        df (float): frequency step
     Returns:
         time-domain signal
     """
 
     # Input frequency array
     nf = len(f)
-    fspan = f[-1] - f[0]
-    df = fspan / (nf - 1)  # more accurate than f[1] - f[0]
+    if df is None:
+        fspan = f[-1] - f[0]
+        df = fspan / (nf - 1)  # more accurate than f[1] - f[0]
 
     # Output time array
     if t is None:
