@@ -510,7 +510,7 @@ def df_trim_around_center(df, column = 'sample', length = 168):
 
     return df_out
 
-def df_trim2starting_zero(df, ycolumn = 'signal', xcolumn = ['sample', 'time'], pad_end = True):
+def df_trim2starting_zero(df, ycolumn = 'signal', xcolumn = ['sample', 'time'], pad_end = False, pad_zeroes = True):
     """Trim dataframe signals, dropping signal edges longer/shorter than center +- length/2.
 
     Function designed to use 'sample' column and replaces it with new values [0 to (length-1)].
@@ -519,11 +519,17 @@ def df_trim2starting_zero(df, ycolumn = 'signal', xcolumn = ['sample', 'time'], 
     ----------
     df : Pandas df
         input dataframe
-    column : str, optional
-        column to compare for dropping, by default 'sample'
+    ycolumn : str, optional
+        column to compare for dropping, by default 'signal'
+    xcolumn : str or List[str], optional
+        column to compare for dropping, by default ['sample', 'time']
     length : int or float, optional
         target length of signals, by default 168
         could also be used for time/frequency values
+    pad_end: bool, optional
+        pad dropped trailing signals with the last present values, by default False
+    pad_zeroes: bool, optional
+        pad dropped trailing signals with zeroes, by default True
 
     Returns
     -------
@@ -538,61 +544,33 @@ def df_trim2starting_zero(df, ycolumn = 'signal', xcolumn = ['sample', 'time'], 
     if "phantom" in df.columns:
         # splits df in lists of dfs per grouping, criteria depending on 'calibration type 4' (phantom with Tx-off) or 'phantom scan'
         if "cal_type" in df.columns:
-            df_list = dfproc.split_df(df, groups=["cal_type", "phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"])
+            df_list = dfproc.split_df(df, groups=["cal_type", "phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair"])
         else:
-            df_list = dfproc.split_df(df, groups=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"])
-
-        for data in tqdm(df_list):
-            data.reset_index(inplace=True)
-            for p in tqdm(data.pair.unique(), leave = False, disable = True):
-                new_x = []
-                orig_size = data.loc[data.pair.eq(p), ycolumn].size
-                for x in xcolumn:
-                    new_x.append([data.loc[data.pair.eq(p), x].min(), data.loc[data.pair.eq(p), x].max(),
-                                    (data.loc[data.pair.eq(p), x].max() - data.loc[data.pair.eq(p), x].min()) / (orig_size - 1)])
-                indexNames = find_zero_crossings(data.loc[data.pair.eq(p)], column=ycolumn, method= 1).index[0]
-                data.drop(np.arange(data.loc[data.pair.eq(p)].index[0], indexNames), axis = 0, inplace = True)
-                for i, x in enumerate(xcolumn):
-                    data.loc[data.pair.eq(p), x] = np.arange(new_x[i][0], new_x[i][2] * data.loc[data.pair.eq(p), ycolumn].size, step = new_x[i][2] )
-                if pad_end:
-                    # pad = deepcopy(data.loc[data.pair.eq(p)].iloc[data.loc[data.pair.eq(p), ycolumn].size - 1: orig_size - data.loc[data.pair.eq(p), ycolumn].size])
-                    # pad = deepcopy(data.loc[data.loc[data.pair.eq(p)].iloc[data.loc[data.pair.eq(p), ycolumn].size - 1].index.repeat(orig_size - data.loc[data.pair.eq(p), 
-                    #                 ycolumn].size)].reset_index(drop=True))
-                    # pad = deepcopy(data.iloc[data.loc[data.pair.eq(p), ycolumn].size - 1, :])
-                    # pad = pad.loc[pad.index.repeat(orig_size - data.loc[data.pair.eq(p), ycolumn].size), :].reset_index(drop=True)
-                    pad = pd.DataFrame({col: np.repeat( data.iloc[data.loc[data.pair.eq(p), ycolumn].size - 1][col], orig_size - data.loc[data.pair.eq(p), ycolumn].size) for col in data.columns})
-                    for i, x in enumerate(xcolumn):
-                        pad.loc[:,x] = np.arange(new_x[i][2] * data.loc[data.pair.eq(p), ycolumn].size, new_x[i][1] + new_x[i][2], step = new_x[i][2] )
-                    data = pd.concat([data, pad], axis = 0)
-                    data.reset_index(drop = True, inplace=True)
-            data.reset_index(drop = True, inplace=True)
-            processed.append(data)
+            df_list = dfproc.split_df(df, groups=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair"])
 
     else:
         df_list = dfproc.split_df(df.loc[df.cal_type.ne(1)], groups=["cal_type", "date", "rep", "iter", "attLO", "attRF"])
 
-        for data in tqdm(df_list):
-            data.reset_index(inplace=True)
-            new_x = []
-            orig_size = data.loc[:, ycolumn].size
-            for x in xcolumn:
-                new_x.append([data.loc[:, x].min(), data.loc[:, x].max(),
-                                (data.loc[:, x].max() - data.loc[:, x].min()) / (orig_size - 1)])
-            indexNames = find_zero_crossings(data, column=ycolumn, method= 1).index[0]
-            data.drop(np.arange(indexNames), axis = 0, inplace = True)
+    for data in tqdm(df_list):
+        data.reset_index(inplace=True)
+        new_x = []
+        orig_size = data.loc[:, ycolumn].size
+        for x in xcolumn:
+            new_x.append([data.loc[:, x].min(), data.loc[:, x].max(),
+                            (data.loc[:, x].max() - data.loc[:, x].min()) / (orig_size - 1)])
+        indexNames = find_zero_crossings(data, column=ycolumn, method= 1).index[0]
+        data.drop(np.arange(indexNames), axis = 0, inplace = True)
+        for i, x in enumerate(xcolumn):
+            data.loc[:, x] = np.arange(new_x[i][0], new_x[i][2] * data.loc[:, ycolumn].size, step = new_x[i][2])
+        if pad_end or pad_zeroes:
+            pad = pd.DataFrame({col: np.repeat( data.iloc[data[ycolumn].size - 1][col], orig_size - data.loc[:, ycolumn].size) for col in data.columns})
             for i, x in enumerate(xcolumn):
-                data.loc[:, x] = np.arange(new_x[i][0], new_x[i][2] * data.loc[:, ycolumn].size, step = new_x[i][2])
-            if pad_end:
-                # pad = deepcopy(data.iloc[data[ycolumn].size - 1])
-                # pad = deepcopy(data.loc[data.iloc[data.loc[:, ycolumn].size - 1].index.repeat(orig_size - data.loc[:, ycolumn].size)].reset_index(drop=True))
-                # pad = deepcopy(data.iloc[data.loc[:, ycolumn].size - 1])
-                # pad = pad.loc[pad.index.repeat(orig_size - data.loc[:, ycolumn].size), :].reset_index(drop=True)
-                pad = pd.DataFrame({col: np.repeat( data.iloc[data[ycolumn].size - 1][col], orig_size - data.loc[:, ycolumn].size) for col in data.columns})
-                for i, x in enumerate(xcolumn):
-                    pad.loc[:, x] = np.arange(new_x[i][2] * data.loc[:, ycolumn].size, new_x[i][1] + new_x[i][2], step = new_x[i][2] )
-                data = pd.concat([data, pad], axis = 0)
-            data.reset_index(drop = True, inplace=True)
-            processed.append(data)
+                pad.loc[:, x] = np.arange(new_x[i][2] * data.loc[:, ycolumn].size, new_x[i][1] + new_x[i][2], step = new_x[i][2] )
+            if pad_zeroes:
+                pad.loc[:, ycolumn] = 0
+            data = pd.concat([data, pad], axis = 0)
+        data.reset_index(drop = True, inplace=True)
+        processed.append(data)
 
     df_out = pd.concat(processed, axis=0)
     df_out.reset_index(drop = True, inplace=True)

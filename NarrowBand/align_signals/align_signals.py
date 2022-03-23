@@ -314,9 +314,16 @@ def find_delay(s1, s2, max_delay = None, out_xcorr = False, align_power = False)
         s1 = np.real_if_close(s1, tol = 10000)
         s2 = np.real_if_close(s2, tol = 10000)
 
-    xcorr1 = signal.correlate((s1 - np.mean(s1)) / np.std(s1), (s2 - np.mean(s2)) / np.std(s2), mode='full', method='auto') / min(len(s1),len(s2)) # normalized cross-correlation
-    lags1 = signal.correlation_lags(np.size(s1), np.size(s2), mode='full')
-    delay1 = -lags1[np.argmax(np.abs(xcorr1))]
+    if max_delay is None:
+        max_delay = min(len(s1),len(s2))
+
+    xcorr = signal.correlate((s1 - np.mean(s1)) / np.std(s1), (s2 - np.mean(s2)) / np.std(s2), mode='full', method='auto') / min(len(s1),len(s2)) # normalized cross-correlation
+    lags = signal.correlation_lags(np.size(s1), np.size(s2), mode='full')
+
+    xcorr_limited = np.where(np.abs(lags) < max_delay, xcorr, 0)
+    delay = -lags[np.argmax(np.abs(xcorr_limited))]
+
+    # delay = -lags[np.argmax(np.abs(xcorr))]
 
     # xcorr2 = signal.correlate((s2 - np.mean(s2)) / np.std(s2), (s1 - np.mean(s1)) / np.std(s1), mode='full', method='auto') / min(len(s1),len(s2)) # normalized cross-correlation
     # lags2 = signal.correlation_lags(np.size(s2), np.size(s1), mode='full')
@@ -328,19 +335,19 @@ def find_delay(s1, s2, max_delay = None, out_xcorr = False, align_power = False)
     # else:
     #     delay = delay1
     #     xcorr_out = xcorr1
-    delay = delay1
-    xcorr_out = xcorr1
+    # delay = delay1
+    # xcorr_out = xcorr1
 
-    if max_delay is None:
-        max_delay = min(len(s1),len(s2))
+    # if max_delay is None:
+    #     max_delay = min(len(s1),len(s2))
 
-    if (delay > max_delay) and (delay > 0):
-        delay = max_delay
-    elif (delay < -max_delay) and (delay < 0):
-        delay = -max_delay
+    # if (delay > max_delay) and (delay > 0):
+    #     delay = max_delay
+    # elif (delay < -max_delay) and (delay < 0):
+    #     delay = -max_delay
 
     if out_xcorr:
-        return delay, xcorr_out
+        return delay, xcorr
     else:
         return delay
 
