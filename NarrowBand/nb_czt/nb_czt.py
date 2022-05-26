@@ -64,6 +64,7 @@ from NarrowBand.nb_czt.fft_window import fft_window
 # import NarrowBand.analysis_pd.df_antenna_space as dfant
 import NarrowBand.analysis_pd.df_processing as dfproc
 import NarrowBand.analysis_pd.df_data_essentials as nbd
+from NarrowBand.analysis_pd.safe_arange import safe_arange
 from NarrowBand.analysis_pd.uncategorize import uncategorize
 
 def zeroes_for_fft(data_ch1, data_ch2, freqs, f_step = 12.5*1.e6/1, fft_num_samples = 2**16):
@@ -94,7 +95,7 @@ def zeroes_for_fft(data_ch1, data_ch2, freqs, f_step = 12.5*1.e6/1, fft_num_samp
 
     #f_step = (12.5*1e6/4)
     #f_step = (12.5*1e6/2)
-    fft_freqs = np.arange(0,fft_num_samples*f_step,f_step)
+    fft_freqs = safe_arange(0,fft_num_samples*f_step,f_step)
 
     fft_data = np.zeros(fft_freqs.shape, dtype=complex)
 
@@ -145,7 +146,7 @@ def generate_freq_array(freqs, max_freq = None, freq_step = None, min_freq = Non
         #     min_freq = freqs.min()
         min_freq = freqs.min() - freq_step*extra_freqs
 
-    out_freqs = np.arange(min_freq*fscale, max_freq*fscale, step = freq_step*fscale)
+    out_freqs = safe_arange(min_freq*fscale, max_freq*fscale, step = freq_step*fscale)
     return out_freqs
 
 def auto_time_array(f, periods = 1, step_division = 1, start = None, max_time = None, tstep = None):
@@ -204,7 +205,7 @@ def auto_time_array(f, periods = 1, step_division = 1, start = None, max_time = 
         if max_time is None:
             max_time = t[-1] * periods
 
-        t = np.arange(start, max_time, step = tstep)
+        t = safe_arange(start, max_time, step = tstep)
 
     # # final time is chosen *multiple* divided by max frequency
     # max_time = multiple / (8*df)
@@ -212,7 +213,7 @@ def auto_time_array(f, periods = 1, step_division = 1, start = None, max_time = 
     # # time step is 1 divided by *multiple* times the frequency step
     # tstep = 1/(4*multiple*f[-1])
 
-    # t = np.arange(start, max_time, step = tstep)
+    # t = safe_arange(start, max_time, step = tstep)
     return t
 
 def place_czt_value(czt_data, f, freqs, df, pair = None, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6):

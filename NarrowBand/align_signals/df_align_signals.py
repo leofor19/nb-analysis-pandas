@@ -55,6 +55,7 @@ import NarrowBand.align_signals.align_signals as alsig
 import NarrowBand.analysis_pd.df_compare as dfcomp
 import NarrowBand.analysis_pd.df_processing as dfproc
 # import NarrowBand.analysis_pd.df_data_essentials as nbd
+from NarrowBand.analysis_pd.safe_arange import safe_arange
 # from NarrowBand.analysis_pd.uncategorize import uncategorize
 
 def df_simple_align_signals(df, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, method = 'simple',
@@ -382,7 +383,7 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
     return df1, df2
 
 def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, method = 'matlab', decimals = 4, peak_center_offset = 0,
-                                    peakLowerBound = None, peakUpperBound = None, align_power=True):
+                                    peakLowerBound = None, peakUpperBound = None, align_power=True, narrowband = True, array_config = 'hemisphere'):
     """Align signals for antennas with same distance in-between on a same dataframe by delaying earliest signal.
 
     Based on MATLAB alignsignals function, finding delay using cross-correlation.
@@ -419,6 +420,15 @@ def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max
         (for 'simple' method only)
     align_power : bool, optional
         set to True to perform alignment using power of signals, by default True
+    narrowband : bool, optional
+            set to True to switch positions of antennas 4 and 13, by default True
+            this is used for the narrowband system due to switching circuit manufacturing error
+    array_config : str, optional
+        selection for array configuration, by default 'hemisphere'
+        options:
+        'hemisphere': ring array as in 3-D printed hemisphere
+        'hybrid': hybrid bra (mix between ring and cross)
+        'ring': ring bra (similar to hemisphere, but varying radius)
 
     Returns
     -------
@@ -433,7 +443,7 @@ def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max
     if not isinstance(column, list):
         column = [column]
 
-    df_list = dfproc.dfsort_pairs(df, sort_type = "between_antennas", decimals = decimals, out_distances = True, out_as_list = True)
+    df_list = dfproc.dfsort_pairs(df, sort_type = "between_antennas", decimals = decimals, out_distances = True, out_as_list = True, narrowband = narrowband, array_config = array_config)
 
     processed = []
 
@@ -561,11 +571,12 @@ def df_trim2starting_zero(df, ycolumn = 'signal', xcolumn = ['sample', 'time'], 
         indexNames = find_zero_crossings(data, column=ycolumn, method= 1).index[0]
         data.drop(np.arange(indexNames), axis = 0, inplace = True)
         for i, x in enumerate(xcolumn):
-            data.loc[:, x] = np.arange(new_x[i][0], new_x[i][2] * data.loc[:, ycolumn].size, step = new_x[i][2])
+            array = safe_arange(new_x[i][0], new_x[i][2] * data.loc[:, ycolumn].size, step = new_x[i][2])
+            data.loc[:, x] = array[:data.loc[:, ycolumn].size]
         if pad_end or pad_zeroes:
             pad = pd.DataFrame({col: np.repeat( data.iloc[data[ycolumn].size - 1][col], orig_size - data.loc[:, ycolumn].size) for col in data.columns})
             for i, x in enumerate(xcolumn):
-                pad.loc[:, x] = np.arange(new_x[i][2] * data.loc[:, ycolumn].size, new_x[i][1] + new_x[i][2], step = new_x[i][2] )
+                pad.loc[:, x] = safe_arange(new_x[i][2] * data.loc[:, ycolumn].size, new_x[i][1] + new_x[i][2], step = new_x[i][2] )
             if pad_zeroes:
                 pad.loc[:, ycolumn] = 0
             data = pd.concat([data, pad], axis = 0)

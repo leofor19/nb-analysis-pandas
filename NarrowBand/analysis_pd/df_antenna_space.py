@@ -266,7 +266,23 @@ def Spherical2AzimuthalEquidistant(latitudes, longitudes, centerLatitude, center
 
 
 class Settings_xyz:
-    def __init__(self, narrowband = True, reference_rotation = 15):
+    def __init__(self, narrowband = True, reference_rotation = 15, array_config = 'hemisphere'):
+        """Antenna array settings class for distance calculations.
+
+        _extended_summary_
+
+        Parameters
+        ----------
+        narrowband : bool, optional
+            set to True to switch positions of antennas 4 and 13, by default True
+            this is used for the narrowband system due to switching circuit manufacturing error
+        array_config : str, optional
+            selection for array configuration, by default 'hemisphere'
+            options:
+            'hemisphere': ring array as in 3-D printed hemisphere
+            'hybrid': hybrid bra (mix between ring and cross)
+            'ring': ring bra (similar to hemisphere, but varying radius)
+        """
         # Set narrowband to True to switch positions of antennas 4 and 13
 
         # We consider phantoms 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14  (not 4)
@@ -307,19 +323,50 @@ class Settings_xyz:
         # self.antenna_locations = SENSOR_RADIUS*[cos(antenna_THETA).*cos(antenna_PHI) cos(antenna_THETA).*sin(antenna_PHI) sin(antenna_THETA)];
 
         self.reference_rotation = reference_rotation
-        ant_r = 70
 
-        if narrowband:
-            ant_theta = np.deg2rad([15, 15, 15, 45, 15, 15, 15, 15, 45, 45, 45, 45, 15, 45, 45, 45])
-            ant_phi = np.deg2rad([-15, 15, 75, 165, 165, -165, -105, -75, -15, 15, 75, 105, 105, -165, -105, -75]) + np.deg2rad(self.reference_rotation)
-        else:
-            ant_theta = np.deg2rad([15, 15, 15, 15, 15, 15, 15, 15, 45, 45, 45, 45, 45, 45, 45, 45])
-            ant_phi = np.deg2rad([-15, 15, 75, 105, 165, -165, -105, -75, -15, 15, 75, 105, 165, -165, -105, -75]) + np.deg2rad(self.reference_rotation)
+        if (array_config.lower() == 'ring'):
+            if narrowband:
+                ant_r = [55, 56, 59, 64, 64, 67, 69, 74, 55, 54, 59, 59, 64, 65, 65, 69]
+                ant_theta = np.pi/2 - np.deg2rad([61, 59, 64, 40, 67, 70, 67, 67, 27, 25, 15, 15, 63, 41, 41, 41])
+                ant_phi = np.deg2rad([335, 23, 90, 167, 167, 200, 250, 280, 335, 23, 90, 125, 125, 200, 250, 280]) + np.deg2rad(reference_rotation)
+            else:
+                ant_r = [55, 56, 59, 64, 64, 67, 69, 74, 55, 54, 59, 59, 64, 65, 65, 69]
+                ant_theta = np.pi/2 - np.deg2rad([61, 59, 64, 63, 67, 70, 67, 67, 27, 25, 15, 15, 40, 41, 41, 41])
+                ant_phi = np.deg2rad([335, 23, 90, 125, 167, 200, 250, 280, 335, 23, 90, 125, 167, 200, 250, 280]) + np.deg2rad(reference_rotation)
 
-        antenna_locations = []
-        for i in range(len(ant_theta)):
-            [x, y, z] = sph2cart(ant_phi[i], ant_theta[i], ant_r)
-            antenna_locations.append([x, y, z])
+            antenna_locations = []
+            for i in range(len(ant_theta)):
+                [x, y, z] = sph2cart(ant_phi[i], ant_theta[i], ant_r)
+                antenna_locations.append([x, y, z])
+
+        elif (array_config.lower() == 'hybrid'):
+            if narrowband:
+                ant_x = [-25, 15, 10, -25, 35, 47, 31, 10, 40, 20, 10, 5, 5, -45, -28, -10]
+                ant_y = [-40, -60, -40, 35, -40, 0, 0, 0, 35, 50, 30, 15, -20, 0, 0, 0]
+                ant_z = [44, 40, 54, 48, 44, 43, 62, 69, 44, 39, 53, 54, 59, 39, 54, 69]
+            else:
+                ant_x = [-25, 15, 10, 5, 35, 47, 31, 10, 40, 20, 10, 5, -25, -45, -28, -10]
+                ant_y = [-40, -60, -40, -20, -40, 0, 0, 0, 35, 50, 30, 15, 35, 0, 0, 0]
+                ant_z = [44, 40, 54, 59, 44, 43, 62, 69, 44, 39, 53, 54, 48, 39, 54, 69]
+
+            antenna_locations = []
+            for i in range(len(ant_x)):
+                [x, y, z] = sph2cart(ant_x, ant_y, ant_z)
+                antenna_locations.append([x, y, z])
+
+        else: # array_config.lower() == 'hemisphere'
+            ant_r = 70
+            if narrowband:
+                ant_theta = np.deg2rad([15, 15, 15, 45, 15, 15, 15, 15, 45, 45, 45, 45, 15, 45, 45, 45])
+                ant_phi = np.deg2rad([-15, 15, 75, 165, 165, -165, -105, -75, -15, 15, 75, 105, 105, -165, -105, -75]) + np.deg2rad(self.reference_rotation)
+            else:
+                ant_theta = np.deg2rad([15, 15, 15, 15, 15, 15, 15, 15, 45, 45, 45, 45, 45, 45, 45, 45])
+                ant_phi = np.deg2rad([-15, 15, 75, 105, 165, -165, -105, -75, -15, 15, 75, 105, 165, -165, -105, -75]) + np.deg2rad(self.reference_rotation)
+
+            antenna_locations = []
+            for i in range(len(ant_theta)):
+                [x, y, z] = sph2cart(ant_phi[i], ant_theta[i], ant_r)
+                antenna_locations.append([x, y, z])
 
         self.antenna_locations = [np.multiply(d,[1e-3]*3) for d in antenna_locations]
 
@@ -455,7 +502,23 @@ class Settings_xyz:
 
 
 class Settings:
-    def __init__(self, narrowband = True):
+    def __init__(self, narrowband = True, array_config = 'hemisphere'):
+        """Antenna array settings class.
+
+        _extended_summary_
+
+        Parameters
+        ----------
+        narrowband : bool, optional
+            set to True to switch positions of antennas 4 and 13, by default True
+            this is used for the narrowband system due to switching circuit manufacturing error
+        array_config : str, optional
+            selection for array configuration, by default 'hemisphere'
+            options:
+            'hemisphere': ring array as in 3-D printed hemisphere
+            'hybrid': hybrid bra (mix between ring and cross)
+            'ring': ring bra (similar to hemisphere, but varying radius)
+        """
         # Set narrowband to True to switch positions of antennas 4 and 13
 
         # We consider phantoms 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14  (not 4)
@@ -495,19 +558,49 @@ class Settings:
         # SENSOR_RADIUS = 0.0730;
         # self.antenna_locations = SENSOR_RADIUS*[cos(antenna_THETA).*cos(antenna_PHI) cos(antenna_THETA).*sin(antenna_PHI) sin(antenna_THETA)];
 
-        ant_r = 70
+        if (array_config.lower() == 'ring'):
+            if narrowband:
+                ant_r = [55, 56, 59, 64, 64, 67, 69, 74, 55, 54, 59, 59, 64, 65, 65, 69]
+                ant_theta = np.pi/2 - np.deg2rad([61, 59, 64, 40, 67, 70, 67, 67, 27, 25, 15, 15, 63, 41, 41, 41])
+                ant_phi = np.deg2rad([335, 23, 90, 167, 167, 200, 250, 280, 335, 23, 90, 125, 125, 200, 250, 280]) + np.deg2rad(reference_rotation)
+            else:
+                ant_r = [55, 56, 59, 64, 64, 67, 69, 74, 55, 54, 59, 59, 64, 65, 65, 69]
+                ant_theta = np.pi/2 - np.deg2rad([61, 59, 64, 63, 67, 70, 67, 67, 27, 25, 15, 15, 40, 41, 41, 41])
+                ant_phi = np.deg2rad([335, 23, 90, 125, 167, 200, 250, 280, 335, 23, 90, 125, 167, 200, 250, 280]) + np.deg2rad(reference_rotation)
 
-        if narrowband:
-            ant_theta = np.deg2rad([15, 15, 15, 45, 15, 15, 15, 15, 45, 45, 45, 45, 15, 45, 45, 45])
-            ant_phi = np.deg2rad([-15, 15, 75, 165, 165, -165, -105, -75, -15, 15, 75, 105, 105, -165, -105, -75])
-        else:
-            ant_theta = np.deg2rad([15, 15, 15, 15, 15, 15, 15, 15, 45, 45, 45, 45, 45, 45, 45, 45])
-            ant_phi = np.deg2rad([-15, 15, 75, 105, 165, -165, -105, -75, -15, 15, 75, 105, 165, -165, -105, -75])
+            antenna_locations = []
+            for i in range(len(ant_theta)):
+                [x, y, z] = sph2cart(ant_phi[i], ant_theta[i], ant_r)
+                antenna_locations.append([x, y, z])
 
-        antenna_locations = []
-        for i in range(len(ant_theta)):
-            [x, y, z] = sph2cart(ant_phi[i], ant_theta[i], ant_r)
-            antenna_locations.append([z, x, y])
+        elif (array_config.lower() == 'hybrid'):
+            if narrowband:
+                ant_x = [-25, 15, 10, -25, 35, 47, 31, 10, 40, 20, 10, 5, 5, -45, -28, -10]
+                ant_y = [-40, -60, -40, 35, -40, 0, 0, 0, 35, 50, 30, 15, -20, 0, 0, 0]
+                ant_z = [44, 40, 54, 48, 44, 43, 62, 69, 44, 39, 53, 54, 59, 39, 54, 69]
+            else:
+                ant_x = [-25, 15, 10, 5, 35, 47, 31, 10, 40, 20, 10, 5, -25, -45, -28, -10]
+                ant_y = [-40, -60, -40, -20, -40, 0, 0, 0, 35, 50, 30, 15, 35, 0, 0, 0]
+                ant_z = [44, 40, 54, 59, 44, 43, 62, 69, 44, 39, 53, 54, 48, 39, 54, 69]
+
+            antenna_locations = []
+            for i in range(len(ant_x)):
+                [x, y, z] = sph2cart(ant_x, ant_y, ant_z)
+                antenna_locations.append([x, y, z])
+
+        else: # array_config.lower() == 'hemisphere'
+            ant_r = 70
+            if narrowband:
+                ant_theta = np.deg2rad([15, 15, 15, 45, 15, 15, 15, 15, 45, 45, 45, 45, 15, 45, 45, 45])
+                ant_phi = np.deg2rad([-15, 15, 75, 165, 165, -165, -105, -75, -15, 15, 75, 105, 105, -165, -105, -75])
+            else:
+                ant_theta = np.deg2rad([15, 15, 15, 15, 15, 15, 15, 15, 45, 45, 45, 45, 45, 45, 45, 45])
+                ant_phi = np.deg2rad([-15, 15, 75, 105, 165, -165, -105, -75, -15, 15, 75, 105, 165, -165, -105, -75])
+
+            antenna_locations = []
+            for i in range(len(ant_theta)):
+                [x, y, z] = sph2cart(ant_phi[i], ant_theta[i], ant_r)
+                antenna_locations.append([z, x, y])
 
         self.antenna_locations = [np.multiply(d,[1e-3]*3) for d in antenna_locations]
 
@@ -727,7 +820,7 @@ def extract_reciprocals(pairs):
 
     return pairs_filt, recs, pairs_twice
 
-def sort_pairs(phantom, angle = 0, selected_pairs = "all", reference_point = "tumor", sort_type = "distance", decimals = 4, out_distances=False):
+def sort_pairs(phantom, angle = 0, selected_pairs = "all", reference_point = "tumor", sort_type = "distance", decimals = 4, out_distances=False, narrowband = True, array_config = 'hemisphere'):
     """Sort antenna pairs by distance to reference point for specific phantom and angle.
 
     If a column name is not found (KeyError), displays a message and continues with other columns.
@@ -753,6 +846,15 @@ def sort_pairs(phantom, angle = 0, selected_pairs = "all", reference_point = "tu
         number of decimals for rounding
     out_distances: bool, optional
         set to True to provide optional return list with distances, by default False
+    narrowband : bool, optional
+            set to True to switch positions of antennas 4 and 13, by default True
+            this is used for the narrowband system due to switching circuit manufacturing error
+    array_config : str, optional
+        selection for array configuration, by default 'hemisphere'
+        options:
+        'hemisphere': ring array as in 3-D printed hemisphere
+        'hybrid': hybrid bra (mix between ring and cross)
+        'ring': ring bra (similar to hemisphere, but varying radius)
 
     Returns
     ----------
@@ -761,7 +863,7 @@ def sort_pairs(phantom, angle = 0, selected_pairs = "all", reference_point = "tu
     distances: list of float, optional
         list with distances for each pair in sorted_pairs, only provided if out_distances=True
     """
-    obj = Settings_xyz()
+    obj = Settings_xyz(narrowband = narrowband, array_config = array_config)
 
     obj.setPhantomNb(phantom, angle)
 

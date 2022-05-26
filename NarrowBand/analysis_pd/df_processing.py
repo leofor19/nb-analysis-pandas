@@ -517,7 +517,7 @@ def allpairs2list2(df, select_ref = 1):
 
     return full_pairs
 
-def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals = 4, out_distances = False, out_as_list = True):
+def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals = 4, out_distances = False, out_as_list = True, narrowband = True, array_config = 'hemisphere'):
     """Return list of dataframes with antenna pair column as categorical, sorted by distance to reference point.
 
     The input dataframe is split into a list of dataframes, according to phantom and angle.
@@ -542,6 +542,15 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
         set to True to provide optional return column with distances, by default False
     out_as_list: bool, optional
         set to True to output list, otherwise concatenate back to DataFrame, by default True
+    narrowband : bool, optional
+            set to True to switch positions of antennas 4 and 13, by default True
+            this is used for the narrowband system due to switching circuit manufacturing error
+    array_config : str, optional
+        selection for array configuration, by default 'hemisphere'
+        options:
+        'hemisphere': ring array as in 3-D printed hemisphere
+        'hybrid': hybrid bra (mix between ring and cross)
+        'ring': ring bra (similar to hemisphere, but varying radius)
 
     Returns
     ----------
@@ -565,9 +574,10 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
 
                 if out_distances:
                     sorted_pairs, distances = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type,
-                                                                        decimals = decimals, out_distances=True)
+                                                                        decimals = decimals, out_distances=True, narrowband = narrowband, array_config = array_config)
                 else:
-                    sorted_pairs = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type, decimals = decimals, out_distances=False)
+                    sorted_pairs = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type, decimals = decimals, out_distances=False,
+                                                    narrowband = narrowband, array_config = array_config)
 
                 sorted_pairs = [ "".join(("(", str(p[0]), ",", str(p[1]), ")")) for p in sorted_pairs]
 
@@ -597,7 +607,7 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
 
     return df_list
 
-def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance", decimals = 4, out_distances = False, select_ref = 1, out_as_list = True):
+def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance", decimals = 4, out_distances = False, select_ref = 1, out_as_list = True, narrowband = True, array_config = 'hemisphere'):
     """Return list of dataframes with antenna pair column as categorical, sorted by distance to reference point.
 
     The input dataframe is split into a list of dataframes, according to phantom and angle.
@@ -627,6 +637,15 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
         this is NOT the phantom number, but refers to the compared pair (column on DataFrame), usually both are the same
     out_as_list: bool, optional
         set to True to output list, otherwise concatenate back to DataFrame, by default True
+    narrowband : bool, optional
+            set to True to switch positions of antennas 4 and 13, by default True
+            this is used for the narrowband system due to switching circuit manufacturing error
+    array_config : str, optional
+        selection for array configuration, by default 'hemisphere'
+        options:
+        'hemisphere': ring array as in 3-D printed hemisphere
+        'hybrid': hybrid bra (mix between ring and cross)
+        'ring': ring bra (similar to hemisphere, but varying radius)
 
     Returns
     ----------
@@ -653,9 +672,10 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
 
                 if out_distances:
                     sorted_pairs, distances = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type,
-                                                                        decimals = decimals, out_distances=True)
+                                                                        decimals = decimals, out_distances=True, narrowband = narrowband, array_config = array_config)
                 else:
-                    sorted_pairs = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type, decimals = decimals, out_distances=False)
+                    sorted_pairs = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type, decimals = decimals, out_distances=False,
+                                                    narrowband = narrowband, array_config = array_config)
 
                 sorted_pairs = [ "".join(("(", str(p[0]), ",", str(p[1]), ")")) for p in sorted_pairs]
 

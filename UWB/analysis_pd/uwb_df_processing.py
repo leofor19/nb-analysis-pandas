@@ -31,11 +31,15 @@ from contextlib import redirect_stderr
 import io
 
 # Third party imports
+from scipy import signal
 from natsort import natsorted
 import numpy as np
 import pandas as pd
 # from tqdm import tqdm # when using terminal
 from tqdm.notebook import tqdm # when using Jupyter Notebook
+
+# Local imports
+from matlab_bandpass import matlab_bandpass
 
 class Scan_settings:
     """Class for providing phantom scan info.
@@ -51,7 +55,9 @@ class Scan_settings:
         plug = 2
         rep = 1
         iter = 1
-        sampling_rate = 160e9
+        sampling_rate = 160e9 # [samples/second]
+        f_low = 2e9 # [Hertz]
+        f_high = 4e9 # [Hertz]
         date = '2020-01-24'
         att = 0 # [dB]
         HP_amp = 35 # [dB]
@@ -68,6 +74,9 @@ class Scan_settings:
         self.rep = 1
         self.iter = 1
         self.sampling_rate = 160e9
+
+        self.f_low = 2e9
+        self.f_high = 4e9
 
         self.date = '2020-01-24'
 
@@ -199,6 +208,53 @@ def uwb_scan_folder_sweep(main_path):
 
     return path_list, meta_index
 
+def uwb_filter_signals(df, input_col_names = ['raw_signal'], output_col_names = ['signal'], start_pt = None, nSamples = 1000):
+    """Apply bandpass and detrend filters to uwb system raw signals, with optional prior windowing of samples.
+
+    Uses matlab_bandpass to emulate MATLAB's bandpass function. Detrend is performed with scipy.signal.detrend(x, type = 'linear').
+
+    Attention: if start_pt and nSamples are used to window, the output DataFrame has dropped unused rows.
+(
+    Parameters
+    ----------
+    df : Pandas df
+        input DataFrame with UWB data.
+    input_col_names : list, optional
+        input column names to filter, by default ['raw_signal']
+    output_col_names : list, optional
+        output column names for filtered signal, by default ['signal']
+        IndexError occurs if len(output_col_names) ~= len(input_col_names).
+    start_pt : int, optional
+        initial sample for optional signal windowing, by default None
+    nSamples : int, optional
+        number of samples for optional signal windowing, by default 1000
+        used only if start_pt is not None.
+
+    Returns
+    -------
+    Pandas df
+        output DataFrame with UWB data including filtered signal
+        Note: if start_pt and nSamples are used to window, the output DataFrame has dropped unused rows.
+    """
+    if (start_pt is not None):
+        df = df.loc[df.samples.between(start_pt, start_pt + nSamples, inclusive=True)]
+
+    for p in tqdm(df.pair):
+        for i, col in enumerate(input_col_names):
+            rd = matlab_bandpass(df.loc[df.pair.eq(p), col],
+                                fpass = [df.loc[df.pair.eq(p), "f_low"].unique(), df.loc[df.pair.eq(p), "f_high"].unique()],
+                                fs = df.loc[df.pair.eq(p), "samp_rate"].unique())
+
+            data = signal.detrend(rd, type = 'linear')
+
+            try:
+                df.loc[df.pair.eq(p), output_col_names[i]] = data
+            except IndexError:
+                tqdm.write("IndexError: output_col_names index does not match input_col_names!")
+                return -1
+
+    return df
+
 def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/Documents McGill/Data/UWB/".format(os.environ['USERPROFILE']),
                             processed_path = "Processed/DF/", settings = None, save_file = True, save_format="parquet", parquet_engine= 'pyarrow',
                             nafill = 0, keep_default_na = True, on_bad_lines = 'warn',
@@ -228,7 +284,9 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
             plug = 2
             rep = 1
             iter = 1
-            sample_rate = 160e9
+            sample_rate = 160e9 # [samples/second]
+            f_low = 2e9 # [Hertz]
+            f_high = 4e9 # [Hertz]
             date = '2020-01-24'
             att = 0 # [dB]
             HP_amp = 35 # [dB]
@@ -302,6 +360,7 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
     df["date"] = settings.date
     df["rep"] = settings.rep
     df["iter"] = settings.iter
+    df['pair'] = "(" + df["Tx"].astype(str) + "," + df["Rx"].astype(str) + ")"
 
     df["attRF"] = settings.attRF
     df["HP_amp"] = settings.HP_amp
@@ -310,6 +369,9 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
     df['samp_rate'] = settings.sampling_rate
     df['time'] = df['sample'] * (1/settings.sampling_rate)
     df["obs"] = settings.obs
+
+    df['f_low'] = settings.f_low
+    df['f_high'] = settings.f_high
 
     if save_file:
 
