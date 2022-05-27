@@ -39,15 +39,15 @@ import pandas as pd
 from tqdm.notebook import tqdm # when using Jupyter Notebook
 
 # Local imports
-from matlab_bandpass import matlab_bandpass
+from UWB.analysis_pd.matlab_bandpass import matlab_bandpass
 
 class Scan_settings:
     """Class for providing phantom scan info.
 
     Can be initiated by performing:
 
-    s = Scan_settings(phantom = 1, angle = 0, plug = 2, rep = 1, iter = 1, sampling_rate = 160e9, date = '2020-01-24', attRF = 0, HP_amp = 35, LNA_amp = 25, sig_names = ['transmission', 'signal'],
-                    obs = '')
+    s = Scan_settings(phantom = 1, angle = 0, plug = 2, rep = 1, iter = 1, sampling_rate = 160e9, date = '2020-01-24', attRF = 0, HP_amp = 35, LNA_amp = 25, 
+                        sig_names = ['raw_transmission', 'raw_signal'], obs = '')
 
     Defaults include:
         phantom = 1
@@ -62,7 +62,7 @@ class Scan_settings:
         att = 0 # [dB]
         HP_amp = 35 # [dB]
         LNA_amp = 25 # [dB]
-        sig_names = ['transmission', 'signal'] # (list of column names)
+        sig_names = ['raw_transmission', 'raw_signal'] # (list of column names)
         obs = '' # (string for notes and further info)
     """
     def __init__(self, **kwargs):
@@ -163,7 +163,7 @@ def uwb_data_read(file_name, output_numpy = False, col_names = ['raw_transmissio
 
     f = io.StringIO()
     with redirect_stderr(f):
-        data = pd.read_csv(file_name, sep=" ", header=None,  names = col_names,
+        data = pd.read_csv(file_name, delim_whitespace=True, header=None,  names = col_names,
                         keep_default_na = keep_default_na, on_bad_lines = on_bad_lines)
     if f.getvalue(): # checking warnings/errors for more information
         tqdm.write(f"Parsing errors on {Path(file_name).stem}: {f.getvalue()}")
@@ -214,7 +214,7 @@ def uwb_filter_signals(df, input_col_names = ['raw_signal'], output_col_names = 
     Uses matlab_bandpass to emulate MATLAB's bandpass function. Detrend is performed with scipy.signal.detrend(x, type = 'linear').
 
     Attention: if start_pt and nSamples are used to window, the output DataFrame has dropped unused rows.
-(
+
     Parameters
     ----------
     df : Pandas df
@@ -257,7 +257,7 @@ def uwb_filter_signals(df, input_col_names = ['raw_signal'], output_col_names = 
 
 def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/Documents McGill/Data/UWB/".format(os.environ['USERPROFILE']),
                             processed_path = "Processed/DF/", settings = None, save_file = True, save_format="parquet", parquet_engine= 'pyarrow',
-                            nafill = 0, keep_default_na = True, on_bad_lines = 'warn',
+                            nafill = 0, keep_default_na = True, on_bad_lines = 'warn', out_df = False,
                             **kwargs):
     """Generate Pandas DataFrame "scan data set" files from PicoScope .txt files.
 
@@ -323,13 +323,15 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
         'warn', raise a warning when a bad line is encountered and skip that line.
 
         'skip', skip bad lines without raising or warning when they are encountered.
+    out_df : bool, default False
+        set to True to output DataFrame even with save_file == True
     **kwargs : dict, optional
         keyword arguments to apply to settings class (see 'settings' input above).
 
     Returns (optional)
     ----------
-    df : Pandas df, optional
-        function by default saves a file
+    df : Pandas df or str, optional
+        function by default saves a file and option
         in case save_file is set to False, then outputs the resulting df
     """
     if settings is None:
@@ -343,7 +345,7 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
 
     for i, p in enumerate(tqdm(path_list)):
         data = uwb_data_read(Path(p), output_numpy = False, col_names = settings.sig_names, nafill=nafill, keep_default_na = keep_default_na, on_bad_lines = on_bad_lines)
-        data['sample'] = np.arange(0, np.size(data, axis = 0))
+        data['samples'] = np.arange(0, np.size(data, axis = 0))
         data["nsamples"] = np.size(data, axis = 0)
         data['Tx'] = meta_index[i, 0]
         data['Rx'] = meta_index[i, 1]
@@ -367,25 +369,33 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
     df["LNA_amp"] = settings.LNA_amp
 
     df['samp_rate'] = settings.sampling_rate
-    df['time'] = df['sample'] * (1/settings.sampling_rate)
+    df['time'] = df['samples'] * (1/settings.sampling_rate)
     df["obs"] = settings.obs
 
     df['f_low'] = settings.f_low
     df['f_high'] = settings.f_high
 
     if save_file:
+        out_path = "".join((out_path,processed_path))
+        if not os.path.exists(os.path.dirname(out_path)):
+            os.makedirs(os.path.dirname(out_path))
 
         file_title = f"{settings.date} Phantom {settings.phantom} Angle {settings.angle} Plug {settings.plug} Rep {settings.rep} Iter {settings.iter}"
 
         if save_format.casefold() == "parquet":
             if parquet_engine == 'pyarrow':
-                df.to_parquet("".join((out_path,processed_path, file_title, ".parquet")), engine=parquet_engine, index= False)
+                file_path = "".join((out_path, file_title, ".parquet"))
+                df.to_parquet(file_path, engine=parquet_engine, index= False)
             else:
-                df.to_parquet("".join((out_path,processed_path, file_title, ".parquet")), engine=parquet_engine, object_encoding='utf8', write_index= False)
+                file_path = "".join((out_path, file_title, ".parquet"))
+                df.to_parquet(file_path, engine=parquet_engine, object_encoding='utf8', write_index= False)
         else:
-            df.to_csv("".join((out_path,processed_path, file_title, ".csv")))
+            file_path = "".join((out_path, file_title, ".csv"))
+            df.to_csv(file_path)
         tqdm.write("".join(("\r Saved DataFrame file for: ", file_title, "          ")), end="")
-        return
-
+        if out_df:
+            return df
+        else:
+            return
     else:
         return df

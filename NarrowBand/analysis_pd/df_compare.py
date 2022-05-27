@@ -781,11 +781,11 @@ def specific_comparison(scan1, scan2, comp_columns = "power_dBm"):
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distances"]
         else:
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq"]
-    elif ("sample".casefold() in scan1.columns) and ("sample".casefold() in scan2.columns):
+    elif ("samples".casefold() in scan1.columns) and ("samples".casefold() in scan2.columns):
         if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
-            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "sample", "time", "distances"]
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "samples", "time", "distances"]
         else:
-            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "sample", "time"]
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "samples", "time"]
     elif ("time".casefold() in scan1.columns) and ("time".casefold() in scan2.columns):
         if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "time", "distances"]

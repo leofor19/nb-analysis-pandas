@@ -191,8 +191,8 @@ def subtract_clutter(df, clutter, column = 'signal'):
     # checking the x-axis column
     if df.columns.str.contains('time', case=False, na=False).any():
         xlabel = 'time'
-    elif df.columns.str.contains('sample', case=False, na=False).any():
-        xlabel = 'sample'
+    elif df.columns.str.contains('samples', case=False, na=False).any():
+        xlabel = 'samples'
     else:
         xlabel = 'freq'
     dunit = df.digital_unit.head(1).item()
@@ -295,8 +295,8 @@ def avg_trace_clutter(df, progress_bar = True, center='mean', out_as_list = Fals
         # checking the x-axis column
         if data.columns.str.contains('time', case=False, na=False).any():
             xlabel = 'time'
-        elif data.columns.str.contains('sample', case=False, na=False).any():
-            xlabel = 'sample'
+        elif data.columns.str.contains('samples', case=False, na=False).any():
+            xlabel = 'samples'
         else:
             xlabel = 'freq'
 

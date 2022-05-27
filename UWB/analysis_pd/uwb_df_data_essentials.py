@@ -74,7 +74,7 @@ def uwb_data_read(file_name, output_numpy = False, nafill = 0, keep_default_na =
 
     f = io.StringIO()
     with redirect_stderr(f):
-        data = pd.read_csv(file_name, sep="\s+", header=None, names = ['raw_signal_ch1', 'raw_signal_ch2'],
+        data = pd.read_csv(file_name, delim_whitespace=True, header=None, names = ['raw_signal_ch1', 'raw_signal_ch2'],
                         keep_default_na = keep_default_na, on_bad_lines = on_bad_lines)
     if f.getvalue(): # checking warnings/errors for more information
         tqdm.write(f"Parsing errors on {Path(file_name).stem}: {f.getvalue()}")

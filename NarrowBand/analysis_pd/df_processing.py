@@ -591,8 +591,8 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
                 # checking the x-axis column
                 if df_list[-1].columns.str.contains('time', case=False, na=False).all():
                     xlabel = 'time'
-                elif df_list[-1].columns.str.contains('sample', case=False, na=False).all():
-                    xlabel = 'sample'
+                elif df_list[-1].columns.str.contains('samples', case=False, na=False).all():
+                    xlabel = 'samples'
                 else:
                     xlabel = 'freq'
 
@@ -689,8 +689,8 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
                 # checking the x-axis column
                 if df_list[-1].columns.str.contains('time', case=False, na=False).all():
                     xlabel = 'time'
-                elif df_list[-1].columns.str.contains('sample', case=False, na=False).all():
-                    xlabel = 'sample'
+                elif df_list[-1].columns.str.contains('samples', case=False, na=False).all():
+                    xlabel = 'samples'
                 else:
                     xlabel = 'freq'
 
