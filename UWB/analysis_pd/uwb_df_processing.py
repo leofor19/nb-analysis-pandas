@@ -208,58 +208,7 @@ def uwb_scan_folder_sweep(main_path):
 
     return path_list, meta_index
 
-def uwb_filter_signals(df, input_col_names = ['raw_signal'], output_col_names = ['signal'], start_pt = None, nSamples = 1000):
-    """Apply bandpass and detrend filters to uwb system raw signals, with optional prior windowing of samples.
-
-    Uses matlab_bandpass to emulate MATLAB's bandpass function. Detrend is performed with scipy.signal.detrend(x, type = 'linear').
-
-    Attention: if start_pt and nSamples are used to window, the output DataFrame has dropped unused rows.
-
-    Parameters
-    ----------
-    df : Pandas df
-        input DataFrame with UWB data.
-    input_col_names : list, optional
-        input column names to filter, by default ['raw_signal']
-    output_col_names : list, optional
-        output column names for filtered signal, by default ['signal']
-        IndexError occurs if len(output_col_names) ~= len(input_col_names).
-    start_pt : int, optional
-        initial sample for optional signal windowing, by default None
-    nSamples : int, optional
-        number of samples for optional signal windowing, by default 1000
-        used only if start_pt is not None.
-
-    Returns
-    -------
-    Pandas df
-        output DataFrame with UWB data including filtered signal
-        Note: if start_pt and nSamples are used to window, the output DataFrame has dropped unused rows.
-    """
-    if (start_pt is not None):
-        df = df.loc[df.samples.between(start_pt, start_pt + nSamples, inclusive=True)]
-
-    f_low = df.loc[:, "f_low"].unique()[0]
-    f_high = df.loc[:, "f_high"].unique()[0]
-    samp_rate = df.loc[:, "samp_rate"].unique()
-
-    for p in tqdm(df.pair):
-        for i, col in enumerate(input_col_names):
-            rd = matlab_bandpass(df.loc[df.pair.eq(p), col],
-                                fpass = [f_low, f_high],
-                                fs = samp_rate)
-
-            data = signal.detrend(rd, type = 'linear')
-
-            try:
-                df.loc[df.pair.eq(p), output_col_names[i]] = data
-            except IndexError:
-                tqdm.write("IndexError: output_col_names index does not match input_col_names!")
-                return -1
-
-    return df
-
-def uwb_filter_signals2(df, input_col_names = ['raw_signal'], output_col_names = ['signal'], start_pt = None, nSamples = 1000):
+def uwb_filter_signals(df, input_col_names = ['raw_signal'], output_col_names = ['signal'], start_pt = None, nSamples = 1000, detrend = True):
     """Apply bandpass and detrend filters to uwb system raw signals, with optional prior windowing of samples.
 
     Uses matlab_bandpass to emulate MATLAB's bandpass function. Detrend is performed with scipy.signal.detrend(x, type = 'linear').
@@ -282,6 +231,8 @@ def uwb_filter_signals2(df, input_col_names = ['raw_signal'], output_col_names =
     nSamples : int, optional
         number of samples for optional signal windowing, by default 1000
         used only if start_pt is not None.
+    detrend : bool, optional
+        set to False to only apply bandpass filter, skipping subsequent linear detrending, by default True
 
     Returns
     -------
@@ -302,9 +253,11 @@ def uwb_filter_signals2(df, input_col_names = ['raw_signal'], output_col_names =
                                 fpass = [f_low, f_high],
                                 fs = samp_rate)
 
-        data = signal.detrend(rd, axis = 0, type = 'linear')
-        data = data.flatten()
-        # data = rd.flatten()
+        if detrend:
+            data = signal.detrend(rd, axis = 0, type = 'linear')
+            data = data.flatten()
+        else:
+            data = rd.flatten()
 
         try:
             df.loc[:, output_col_names[i]] = data

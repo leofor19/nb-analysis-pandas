@@ -5,15 +5,15 @@ Adapted from https://dsp.stackexchange.com/questions/68921/python-equivalent-cod
 
 """
 
-from scipy.signal import sosfiltfilt, filtfilt, firwin, ellip, ellipord, butter, buttord, remez, kaiser_atten, kaiser_beta, kaiserord
-import scipy.signal
+# from scipy.signal import sosfiltfilt, filtfilt, firwin, ellip, ellipord, butter, buttord, remez, kaiser_atten, kaiser_beta, kaiserord
+from scipy import signal
 
-def matlab_bandpass(signal, fpass, fs):
+def matlab_bandpass(x, fpass, fs):
     """Emulates MATLAB bandpass filter.
 
     Parameters
     ----------
-    signal : ndarray-like
+    x : ndarray-like
         input signal
     fpass : tuple
         passband frequencies (lowcut, highcut), in Hertz
@@ -44,18 +44,18 @@ def matlab_bandpass(signal, fpass, fs):
     # a = 1.0
     # # taps = firwin(ntaps, [lowcut, highcut], nyq=nyq, pass_zero = False, window=('kaiser', beta), scale=False)
     # taps = firwin(ntaps, [lowcut, highcut], nyq=nyq, pass_zero = False, scale=False)
-    # filtered_signal = filtfilt(taps, a, signal)
+    # filtered_signal = filtfilt(taps, a, x)
 
 
     ## Elliptical (Cauer) filter
-    ord, wn = ellipord(wp = wp, ws = ws, gpass = gpass, gstop = stopbbanAtt, fs = fs)
-    sos = ellip(ord, gpass, stopbbanAtt, wn, btype = 'bandpass', output = 'sos', fs = fs)
+    # ord, wn = ellipord(wp = wp, ws = ws, gpass = gpass, gstop = stopbbanAtt, fs = fs)
+    # sos = ellip(ord, gpass, stopbbanAtt, wn, btype = 'bandpass', output = 'sos', fs = fs)
     ## ord, wn = buttord([lowcut, highcut], [steepness*lowcut, nyq*(1-steepness) + steepness*highcut], gpass, stopbbanAtt, fs)
     ## sos = butter(ord, wn, btype = 'bandpass', output = 'sos', fs = fs)
 
     ## IIRfilter
-    # sos = scipy.signal.iirdesign(wp = [lowcut, highcut], ws = [steepness*lowcut, nyq*(1-steepness) + steepness*highcut], gpass = gpass, gstop = stopbbanAtt, analog=False, ftype='ellip', output='sos', fs=fs)
+    sos = signal.iirdesign(wp = wp, ws = ws, gpass = gpass, gstop = stopbbanAtt, analog=False, ftype='ellip', output='sos', fs=fs)
 
-    filtered_signal = sosfiltfilt(sos, signal, axis = 0)
+    filtered_signal = signal.sosfiltfilt(sos, x, axis = 0, padtype = 'odd')
 
     return filtered_signal
