@@ -36,6 +36,7 @@ def matlab_bandpass(signal, fpass, fs):
     beta = kaiser_beta(atten)
     a = 1.0
     taps = firwin(ntaps, [lowcut, highcut], nyq=nyq, pass_zero = False, window=('kaiser', beta), scale=False)
+    # taps = firwin(ntaps, [lowcut, highcut], nyq=nyq, pass_zero = False, scale=False)
     filtered_signal = filtfilt(taps, a, signal)
 
     return filtered_signal
