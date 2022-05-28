@@ -239,11 +239,15 @@ def uwb_filter_signals(df, input_col_names = ['raw_signal'], output_col_names = 
     if (start_pt is not None):
         df = df.loc[df.samples.between(start_pt, start_pt + nSamples, inclusive=True)]
 
+    f_low = df.loc[:, "f_low"].unique()[0]
+    f_high = df.loc[:, "f_high"].unique()[0]
+    samp_rate = df.loc[:, "samp_rate"].unique()
+
     for p in tqdm(df.pair):
         for i, col in enumerate(input_col_names):
             rd = matlab_bandpass(df.loc[df.pair.eq(p), col],
-                                fpass = [df.loc[df.pair.eq(p), "f_low"].unique()[0], df.loc[df.pair.eq(p), "f_high"].unique()[0]],
-                                fs = df.loc[df.pair.eq(p), "samp_rate"].unique())
+                                fpass = [f_low, f_high],
+                                fs = samp_rate)
 
             data = signal.detrend(rd, type = 'linear')
 
