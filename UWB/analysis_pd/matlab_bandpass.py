@@ -6,6 +6,7 @@ Adapted from https://dsp.stackexchange.com/questions/68921/python-equivalent-cod
 """
 
 from scipy.signal import sosfiltfilt, filtfilt, firwin, ellip, ellipord, butter, buttord, remez, kaiser_atten, kaiser_beta, kaiserord
+import scipy.signal
 
 def matlab_bandpass(signal, fpass, fs):
     """Emulates MATLAB bandpass filter.
@@ -31,6 +32,11 @@ def matlab_bandpass(signal, fpass, fs):
     gpass = 0.1
     steepness = 0.85 # MATLAB default
     nyq = 0.5*fs
+
+    wp = [lowcut, highcut]
+    ws = [steepness*lowcut, nyq*(1-steepness) + steepness*highcut]
+
+    ## Kaiser filter
     # width = (1 - steepness)*nyq # This sets the cutoff width in Hertz
     # ntaps, gb = kaiserord(stopbbanAtt, width/nyq)
     # atten = kaiser_atten(ntaps, width/nyq)
@@ -40,11 +46,16 @@ def matlab_bandpass(signal, fpass, fs):
     # taps = firwin(ntaps, [lowcut, highcut], nyq=nyq, pass_zero = False, scale=False)
     # filtered_signal = filtfilt(taps, a, signal)
 
-    ord, wn = ellipord([lowcut, highcut] / nyq, [steepness*lowcut/nyq, nyq*(1-steepness) + steepness*highcut/nyq], gpass, stopbbanAtt, fs)
+
+    ## Elliptical (Cauer) filter
+    ord, wn = ellipord(wp = wp, ws = ws, gpass = gpass, gstop = stopbbanAtt, fs = fs)
     sos = ellip(ord, gpass, stopbbanAtt, wn, btype = 'bandpass', output = 'sos', fs = fs)
-    # ord, wn = buttord([lowcut, highcut] / nyq, [steepness*lowcut/nyq, nyq*(1-steepness) + steepness*highcut/nyq], gpass, stopbbanAtt, fs)
-    # sos = butter(ord, wn, btype = 'bandpass', output = 'sos', fs = fs)
-    
+    ## ord, wn = buttord([lowcut, highcut], [steepness*lowcut, nyq*(1-steepness) + steepness*highcut], gpass, stopbbanAtt, fs)
+    ## sos = butter(ord, wn, btype = 'bandpass', output = 'sos', fs = fs)
+
+    ## IIRfilter
+    # sos = scipy.signal.iirdesign(wp = [lowcut, highcut], ws = [steepness*lowcut, nyq*(1-steepness) + steepness*highcut], gpass = gpass, gstop = stopbbanAtt, analog=False, ftype='ellip', output='sos', fs=fs)
+
     filtered_signal = sosfiltfilt(sos, signal, axis = 0)
 
     return filtered_signal

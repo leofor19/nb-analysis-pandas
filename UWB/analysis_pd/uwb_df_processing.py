@@ -62,7 +62,7 @@ class Scan_settings:
         att = 0 # [dB]
         HP_amp = 35 # [dB]
         LNA_amp = 25 # [dB]
-        sig_names = ['raw_transmission', 'raw_signal'] # (list of column names)
+        sig_names = ['raw_signal', 'raw_transmission'] # (list of column names)
         obs = '' # (string for notes and further info)
     """
     def __init__(self, **kwargs):
@@ -84,7 +84,7 @@ class Scan_settings:
         self.HP_amp = 35
         self.LNA_amp = 25
 
-        self.sig_names = ['raw_transmission', 'raw_signal']
+        self.sig_names = ['raw_signal', 'raw_transmission']
         self.obs = ''
 
         self.update_values(**kwargs)
@@ -121,7 +121,7 @@ class Scan_settings:
         self.__dict__.update(kwargs)
 
 
-def uwb_data_read(file_name, output_numpy = False, col_names = ['raw_transmission', 'raw_signal'], nafill = 0, keep_default_na = True, on_bad_lines = 'warn'):
+def uwb_data_read(file_name, output_numpy = False, col_names = ['raw_signal', 'raw_transmission'], nafill = 0, keep_default_na = True, on_bad_lines = 'warn'):
     """Read ultrawideband system data file and return data array.
 
     The function reads a PicoScope output .txt file, returning the data in array (or matrix) form.
@@ -294,17 +294,17 @@ def uwb_filter_signals2(df, input_col_names = ['raw_signal'], output_col_names =
 
     f_low = df.loc[:, "f_low"].unique()[0]
     f_high = df.loc[:, "f_high"].unique()[0]
-    samp_rate = df.loc[:, "samp_rate"].unique()
+    samp_rate = df.loc[:, "samp_rate"].unique()[0]
 
     for i, col in enumerate(input_col_names):
-        x = df[col].to_numpy().reshape(df[col].count() // df.pair.nunique(), df.pair.nunique())
+        x = df[col].to_numpy(dtype = np.float64, copy = True).reshape(df[col].count() // df.pair.nunique(), df.pair.nunique())
         rd = matlab_bandpass(x,
                                 fpass = [f_low, f_high],
                                 fs = samp_rate)
 
-        # data = signal.detrend(rd, axis = 0, type = 'linear')
-        # data = data.flatten()
-        data = rd.flatten()
+        data = signal.detrend(rd, axis = 0, type = 'linear')
+        data = data.flatten()
+        # data = rd.flatten()
 
         try:
             df.loc[:, output_col_names[i]] = data
