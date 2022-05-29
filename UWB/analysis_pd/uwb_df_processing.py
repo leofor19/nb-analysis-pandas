@@ -248,16 +248,16 @@ def uwb_filter_signals(df, input_col_names = ['raw_signal'], output_col_names = 
     samp_rate = df.loc[:, "samp_rate"].unique()[0]
 
     for i, col in enumerate(input_col_names):
-        x = df[col].to_numpy(dtype = np.float64, copy = True).reshape(df[col].count() // df.pair.nunique(), df.pair.nunique())
+        x = df[col].to_numpy(dtype = np.float64, copy = True).reshape(df[col].count() // df.pair.nunique(), df.pair.nunique(), order = 'F')
         rd = matlab_bandpass(x,
                                 fpass = [f_low, f_high],
                                 fs = samp_rate)
 
         if detrend:
             data = signal.detrend(rd, axis = 0, type = 'linear')
-            data = data.flatten()
+            data = data.flatten(order = 'F')
         else:
-            data = rd.flatten()
+            data = rd.flatten(order = 'F')
 
         try:
             df.loc[:, output_col_names[i]] = data
