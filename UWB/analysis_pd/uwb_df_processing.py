@@ -47,7 +47,7 @@ class Scan_settings:
     Can be initiated by performing:
 
     s = Scan_settings(phantom = 1, angle = 0, plug = 2, rep = 1, iter = 1, sampling_rate = 160e9, date = '2020-01-24', attRF = 0, HP_amp = 35, LNA_amp = 25, 
-                        sig_names = ['raw_transmission', 'raw_signal'], obs = '')
+                        sig_names = ['raw_transmission', 'raw_signal'], array_config = 'hemisphere', obs = '')
 
     Defaults include:
         phantom = 1
@@ -63,6 +63,7 @@ class Scan_settings:
         HP_amp = 35 # [dB]
         LNA_amp = 25 # [dB]
         sig_names = ['raw_signal', 'raw_transmission'] # (list of column names)
+        array_config = 'hemisphere'
         obs = '' # (string for notes and further info)
     """
     def __init__(self, **kwargs):
@@ -85,6 +86,7 @@ class Scan_settings:
         self.LNA_amp = 25
 
         self.sig_names = ['raw_signal', 'raw_transmission']
+        self.array_config = 'hemisphere'
         self.obs = ''
 
         self.update_values(**kwargs)
@@ -247,7 +249,9 @@ def uwb_filter_signals(df, input_col_names = ['raw_signal'], output_col_names = 
     f_high = df.loc[:, "f_high"].unique()[0]
     samp_rate = df.loc[:, "samp_rate"].unique()[0]
 
-    for i, col in enumerate(input_col_names):
+    for i, col in enumerate(input_col_names): # performs routine for each input column
+        # first extracts data to numpy array of shape (# of samples, # of pairs)
+        # Important: np.reshape and later np.flatten need to use Fortran order ('F'), otherwise signals get mixed up
         x = df[col].to_numpy(dtype = np.float64, copy = True).reshape(df[col].count() // df.pair.nunique(), df.pair.nunique(), order = 'F')
         rd = matlab_bandpass(x,
                                 fpass = [f_low, f_high],
@@ -382,6 +386,7 @@ def uwb_data_read2pandas(main_path, out_path = "{}/OneDrive - McGill University/
 
     df['samp_rate'] = settings.sampling_rate
     df['time'] = df['samples'] * (1/settings.sampling_rate)
+    df['array_config'] = settings.array_config
     df["obs"] = settings.obs
 
     df['f_low'] = settings.f_low
