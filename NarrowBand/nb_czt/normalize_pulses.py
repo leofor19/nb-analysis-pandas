@@ -3,6 +3,8 @@
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
+# Last updated 2022-06-03
+
 """
  Description:
         Module for performing pulse normalization on Pandas DataFrames.
@@ -23,15 +25,11 @@ Written by: Leonardo Fortaleza
 """
 # Standard library imports
 from copy import deepcopy
-from attr import validate
 
 # Third-party library imports
-from natsort import natsorted
 import numpy as np
 import pandas as pd
-from scipy.io import savemat
 from scipy import signal
-import seaborn as sns
 # from tqdm import tqdm # when using terminal
 from tqdm.notebook import tqdm # when using Jupyter Notebook
 #from tqdm.dask import TqdmCallback
@@ -107,11 +105,13 @@ def correct_positive_pulses3(df, ref, column = 'signal', percent_tol = 0.05):
 
     return dfout
 
-def normalize_pulses(df, column = 'signal', method = 'normalization', use_sd = False, ddof=0):
+def normalize_pulses(df, column = 'signal', method = 'normalization_peak', use_sd = False, ddof=0):
     """Normalize signals within DataFrame.
 
-    Accepts phantom or calibration scans. Initially splits DataFrame in groups depending on key columns (up to the antenna pairs). 
-    Normalizes by subtracting mean of signal and dividing by absolute maximum. Can optionally also apply division by standard deviation (standardization).
+    Accepts phantom or calibration scans. Initially splits DataFrame in groups depending on key columns (up to the antenna pairs).
+    Normalizes by subtracting mean of signal and dividing by absolute maximum.
+
+    Can optionally pply division by standard deviation instead of absolute maximum (standardization).
 
     Parameters
     ----------
@@ -121,11 +121,13 @@ def normalize_pulses(df, column = 'signal', method = 'normalization', use_sd = F
         column to normalize, by default 'signal'
     method : str, optional
         select method to apply, by defalut 'normalization'
-        'normalization'     ->  y = (x - mean(x)) / max(abs(x))
+        'normalization_peak'     ->  y = (x - mean(x)) / max(abs(x)) [inverts negative pulses]
+        'normalization_range'     ->  y = (x - mean(x)) / (max(x) - min(x))
         'scaling'           ->  y = (x - min(x)) / (max(x) - min(x))
         'standardization'   ->  y = (x - mean(x)) / sd(x)
     use_sd : bool, optional
         set to true to apply standardization before scaling by absolute maximum, by default False
+        equivalent to method = 'standardization', for backwards compatibility
     ddof : int, optional
         degrees of freedom for standard deviation when use_sd is True, by default 0
 
@@ -147,9 +149,22 @@ def normalize_pulses(df, column = 'signal', method = 'normalization', use_sd = F
 
     for data in tqdm(df_list):
         data.reset_index(inplace=True)
-        if use_sd:
+        if use_sd or (method.lower() == 'standardization'):
             data['normalization'] = data[column].std(ddof=ddof)
             data[column] =  (data[column] - data[column].mean()) / data[column].std(ddof=ddof)
+        elif method.lower() == 'scaling':
+            data['normalization'] = data[column].std(ddof=ddof)
+            data['max'] = data[column].max()
+            data['min'] = data[column].min()
+            data['abs_max'] = data['max'] - data['min']
+            data[column] =  (data[column] - data['min'])
+            data.drop(['max', 'min'], inplace = True)
+        elif method.lower() == 'normalization_range':
+            data['max'] = data[column].max()
+            data['min'] = data[column].min()
+            data['abs_max'] = data['max'] - data['min']
+            data[column] =  data[column] - data[column].mean()
+            data.drop(['max', 'min'], inplace = True)
         else:
             data[column] =  data[column] - data[column].mean()
             data['abs_max'] = data[column].abs().max()

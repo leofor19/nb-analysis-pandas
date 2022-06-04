@@ -251,7 +251,7 @@ def uwb_filter_signals(df, input_col_names = ['raw_signal'], output_col_names = 
 
     for i, col in enumerate(input_col_names): # performs routine for each input column
         # first extracts data to numpy array of shape (# of samples, # of pairs)
-        # Important: np.reshape and later np.flatten need to use Fortran order ('F'), otherwise signals get mixed up
+        # IMPORTANT: np.reshape and later np.flatten need to use Fortran order ('F'), otherwise signals get mixed up
         x = df[col].to_numpy(dtype = np.float64, copy = True).reshape(df[col].count() // df.pair.nunique(), df.pair.nunique(), order = 'F')
         rd = matlab_bandpass(x,
                                 fpass = [f_low, f_high],
