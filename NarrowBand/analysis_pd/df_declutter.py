@@ -195,7 +195,10 @@ def subtract_clutter(df, clutter, column = 'signal'):
         xlabel = 'samples'
     else:
         xlabel = 'freq'
-    dunit = df.digital_unit.head(1).item()
+    if "digital_unit" in df.columns:
+        dunit = df.digital_unit.head(1).item()
+    else:
+        dunit = None
 
     clutter = deepcopy(clutter)
 
@@ -211,6 +214,8 @@ def subtract_clutter(df, clutter, column = 'signal'):
         vunit = df.voltage_unit.head(1).item()
         df.drop('voltage_unit', axis = 1, inplace = True)
         df = df.loc[:,~df.columns.str.contains('^(?=.*voltage)(?=.*mag|.*phase).*', case=False, na=False)]
+    else:
+        vunit = None
     df = df.loc[:,~df.columns.str.contains('subject', case=False, na=False)]
     df = df.loc[:,~df.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
 
@@ -220,9 +225,14 @@ def subtract_clutter(df, clutter, column = 'signal'):
     for col in column:
         clutter.rename(columns={col: "".join((col,"_clutter"))}, inplace = True, errors='ignore')
     # df.merge(clutter['clutter'], how='left', validate = 'many_to_one', left_index = True).reset_index()
-    df = pd.merge(df, clutter, how='left', validate = 'many_to_one', 
-                left_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel],
-                right_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel]).reset_index()
+    if "attLO" in df.columns:
+        df = pd.merge(df, clutter, how='left', validate = 'many_to_one', 
+                    left_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel],
+                    right_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel]).reset_index()
+    else:
+        df = pd.merge(df, clutter, how='left', validate = 'many_to_one', 
+                    left_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "distances", xlabel],
+                    right_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "distances", xlabel]).reset_index()
 
     # if "mean".casefold() in df.columns:
     #     keys = {"raw_digital_ch1_mean": 0, "raw_digital_ch2_mean": 0, "digital_ch1_mean": 0, "digital_ch2_mean": 0, "n_digital_ch1_mean": 8, "n_digital_ch2_mean": 8}
@@ -234,8 +244,9 @@ def subtract_clutter(df, clutter, column = 'signal'):
     for c in column:
         df[c] = df[c].subtract(df["".join((c,"_clutter"))], fill_value=0, axis = 0)
 
-    df["digital_unit"] = dunit
-    if vunit:
+    if dunit is not None:
+        df["digital_unit"] = dunit
+    if vunit is not None:
         df["voltage_unit"] = vunit
 
     df.reset_index(inplace=True)
@@ -300,7 +311,10 @@ def avg_trace_clutter(df, progress_bar = True, center='mean', out_as_list = Fals
         else:
             xlabel = 'freq'
 
-        c = data.drop(["Tx","Rx"], axis = 1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel], observed=True).agg([agg_center])
+        if "attLO" in data.columns:
+            c = data.drop(["Tx","Rx"], axis = 1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel], observed=True).agg([agg_center])
+        else:
+            c = data.drop(["Tx","Rx"], axis = 1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "distances", xlabel], observed=True).agg([agg_center])
         c.columns = [x[0] if isinstance(x,tuple) else x for x in c.columns.ravel()]
         if "index" in c.columns:
             c.drop("index", axis=1, inplace=True)

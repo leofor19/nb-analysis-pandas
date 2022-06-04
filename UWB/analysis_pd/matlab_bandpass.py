@@ -48,8 +48,8 @@ def matlab_bandpass(x, fpass, fs):
 
 
     ## Elliptical (Cauer) filter
-    # ord, wn = ellipord(wp = wp, ws = ws, gpass = gpass, gstop = stopbbanAtt, fs = fs)
-    # sos = ellip(ord, gpass, stopbbanAtt, wn, btype = 'bandpass', output = 'sos', fs = fs)
+    # ord, wn = signal.ellipord(wp = wp, ws = ws, gpass = gpass, gstop = stopbbanAtt, fs = fs)
+    # sos = signal.ellip(ord, gpass, stopbbanAtt, wn, btype = 'bandpass', output = 'sos', fs = fs)
     ## ord, wn = buttord([lowcut, highcut], [steepness*lowcut, nyq*(1-steepness) + steepness*highcut], gpass, stopbbanAtt, fs)
     ## sos = butter(ord, wn, btype = 'bandpass', output = 'sos', fs = fs)
 

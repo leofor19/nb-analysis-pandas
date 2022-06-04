@@ -449,7 +449,10 @@ def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max
 
     for data in tqdm(df_list):
 
-        data = data.sort_values(by=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", sort_col])
+        if "attLO" in data.columns:
+            data = data.sort_values(by=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", sort_col])
+        else:
+            data = data.sort_values(by=["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "pair", "Tx", "Rx", sort_col])
         data = data.reset_index(drop = False)
 
         for d in tqdm(data.distances.unique(), leave = False):
