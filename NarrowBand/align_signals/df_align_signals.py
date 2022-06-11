@@ -382,7 +382,7 @@ def direct_df_align_signals(df1, df2, column = 'signal', sort_col = 'time', max_
 
     return df1, df2
 
-def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, method = 'matlab', decimals = 4, peak_center_offset = 0,
+def df_align_signals_same_distance(df, column = 'signal', bins = None, sort_col = 'time', max_delay = None, truncate = True, method = 'matlab', decimals = 4, peak_center_offset = 0,
                                     peakLowerBound = None, peakUpperBound = None, align_power=True, narrowband = True, array_config = 'hemisphere'):
     """Align signals for antennas with same distance in-between on a same dataframe by delaying earliest signal.
 
@@ -443,7 +443,10 @@ def df_align_signals_same_distance(df, column = 'signal', sort_col = 'time', max
     if not isinstance(column, list):
         column = [column]
 
-    df_list = dfproc.dfsort_pairs(df, sort_type = "between_antennas", decimals = decimals, out_distances = True, out_as_list = True, narrowband = narrowband, array_config = array_config)
+    if bins is None:
+        df_list = dfproc.dfsort_pairs(df, sort_type = "between_antennas", decimals = decimals, out_distances = True, out_as_list = True, narrowband = narrowband, array_config = array_config)
+    else:
+        df_list = dfproc.subgroup_distances(df, bins = bins, decimals = decimals, sort_type = "between_antennas", narrowband = narrowband, array_config = array_config, out_as_list= True)
 
     processed = []
 

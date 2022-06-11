@@ -704,6 +704,71 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
         df_list = pd.concat(df_list, axis = 0)
     return df_list
 
+def subgroup_distances(df, bins = np.concatenate([[0.02], np.arange(4, 14, step = 1)/100]), decimals = 4,  reference_point = "tumor", sort_type = "between_antennas", narrowband = True, array_config = 'hemisphere', out_as_list = False):
+    """Perform more specific grouping of distances into bins.
+
+    If "distances" column is not already present, performs dfsort_pairs() or dfsort_pairs_compared() appropriately.
+
+    Then, used np.digitize() to generate new groups column "bin".
+
+    Parameters
+    ----------
+    df : DataFrame or list of Dataframes
+        phantom scan data set or list of DataFrames
+    bins: int, sequence of scalars, or IntervalIndex
+        The criteria to bin by. Default is np.arange(3, 14)/100.
+
+        int : Defines the number of equal-width bins in the range of x. The range of x is extended by .1% on each side to include the minimum and maximum values of x.
+
+        sequence of scalars : Defines the bin edges allowing for non-uniform width. No extension of the range of x is done.
+
+        IntervalIndex : Defines the exact bins to be used. Note that IntervalIndex for bins must be non-overlapping.
+    decimals : int, default 2
+        number of decimals for rounding
+    reference_point: str or array-like, default "tumor"
+        input "tumor", "tumour" or "plug" to calculate based on position of plug inside phantom, otherwise receives a 3-D coordinate in form [x,y,z]
+    sort_type : str, default "between_antennas"
+       available selections:
+            "distance": calculate minimum travel distance between each antenna in a pair and the reference point
+            "mean-point": calculate mean-point between antennas in a pair and its distance to the reference point
+            "between_antennas": direct distance between antennas, disregarding the reference point
+    narrowband : bool, optional
+            set to True to switch positions of antennas 4 and 13, by default True
+            this is used for the narrowband system due to switching circuit manufacturing error
+    array_config : str, optional
+        selection for array configuration, by default 'hemisphere'
+        options:
+        'hemisphere': ring array as in 3-D printed hemisphere
+        'hybrid': hybrid bra (mix between ring and cross)
+        'ring': ring bra (similar to hemisphere, but varying radius)
+    out_as_list: bool, optional
+        set to True to output list grouped by ['phantom', 'angle'], otherwise outputs single DataFrame, by default False
+
+    Returns
+    ----------
+    df: DataFrame or list of DataFrame
+        output DataFrame or list of DataFrame (when out_as_list is set to True)
+    """
+    if ~df[0].columns.str.contains('distance', case=False, na=False).any():
+        if "phantom_1" in df:
+            df = dfsort_pairs_compared(df, reference_point = reference_point, sort_type = sort_type, decimals =  decimals, out_distances = True,
+                                        out_as_list = False, narrowband = narrowband, array_config = array_config)
+        else:
+            df = dfsort_pairs(df, reference_point = reference_point, sort_type = sort_type, decimals =  decimals, out_distances = True,
+                                out_as_list = False, narrowband = narrowband, array_config = array_config)
+    if bins is not None:
+        # splits values in bins
+        # df.loc[:, "group_distance"] = pd.cut(df.distances, bins = bins, right=True, labels=False, retbins=False, precision=3, include_lowest=False, duplicates='raise', ordered=True)
+        df.loc[:, "bin"] = np.digitize(df.distances.to_numpy(), bins = bins, right=True) - 1
+
+        df.loc[:, "orig_distance"] = df.loc[:, "distances"]
+        # df.loc[:, "distances"] = [bins[i] for i in df.bin.to_numpy()]
+        df.loc[:, "distances"] = np.take(bins, df.bin.to_numpy())
+
+    if out_as_list:
+        df = split_df(df, groups= ["phantom", "angle"])
+    return df
+
 def pivot_for_multivariate(df, index=None, columns=list(["pair","freq"]), values=list(["voltage_mag"])):
     """Return dataframe pivoted to have each measurement for an antenna pair + frequency combination in a separate column.
 

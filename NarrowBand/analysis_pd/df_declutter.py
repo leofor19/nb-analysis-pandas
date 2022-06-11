@@ -109,7 +109,7 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
         out_path = "".join((main_path,d,"/",processed_path,"Decluttered/{0} Phantom Set Decluttered.parquet".format(d)))
 
         df_list = dfproc.df_collect(main_paths, is_recursive=is_recursive, file_format=file_format, columns=columns)
-        if ~df_list[0].columns.str.contains('distances', case=False, na=False).any():
+        if ~df_list[0].columns.str.contains('distance', case=False, na=False).any():
             df_list = dfproc.dfsort_pairs(df_list, reference_point = "tumor", sort_type = "between_antennas", decimals = 4, out_distances = True)
 
         decl_list = []
@@ -280,7 +280,7 @@ def avg_trace_clutter(df, progress_bar = True, center='mean', out_as_list = Fals
     if not isinstance(df, list):
         df = [df]
 
-    if ~df[0].columns.str.contains('distances', case=False, na=False).any():
+    if ~df[0].columns.str.contains('distance', case=False, na=False).any():
         df = dfproc.dfsort_pairs(df, reference_point = "tumor", sort_type = "between_antennas", decimals = 4, out_distances = True)
 
     if center == 'median':
