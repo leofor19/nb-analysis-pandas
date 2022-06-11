@@ -461,8 +461,8 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
                 fd_data["pair"] = pair
                 fd_data["Tx"] = int(data.loc[data.pair.eq(pair), 'Tx'].unique())
                 fd_data["Rx"] = int(data.loc[data.pair.eq(pair), 'Rx'].unique())
-                if "distances" in data.columns:
-                    fd_data["distances"] = data.loc[data.pair.eq(pair), 'distances'].unique()[0]
+                if "distance" in data.columns:
+                    fd_data["distance"] = data.loc[data.pair.eq(pair), 'distance'].unique()[0]
                 in_process.append(fd_data)
 
             czt_df = pd.concat(in_process, axis=0)
@@ -665,8 +665,8 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
                 td_data["pair"] = pair
                 td_data["Tx"] = int(data.loc[data.pair.eq(pair), 'Tx'].unique())
                 td_data["Rx"] = int(data.loc[data.pair.eq(pair), 'Rx'].unique())
-                if "distances" in data.columns:
-                    td_data["distances"] = data.loc[data.pair.eq(p), 'distances'].unique()[0]
+                if "distance" in data.columns:
+                    td_data["distance"] = data.loc[data.pair.eq(p), 'distance'].unique()[0]
                 in_process.append(td_data)
 
             iczt_df = pd.concat(in_process, axis=0)
@@ -808,8 +808,8 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym_partial = False, con
                 td_data["pair"] = p
                 td_data["Tx"] = int(data.loc[data.pair.eq(p), 'Tx'].unique())
                 td_data["Rx"] = int(data.loc[data.pair.eq(p), 'Rx'].unique())
-                if "distances" in data.columns:
-                    td_data["distances"] = data.loc[data.pair.eq(p), 'distances'].unique()[0]
+                if "distance" in data.columns:
+                    td_data["distance"] = data.loc[data.pair.eq(p), 'distance'].unique()[0]
                 in_process.append(td_data)
 
             iczt_df = pd.concat(in_process, axis=0, ignore_index=True)

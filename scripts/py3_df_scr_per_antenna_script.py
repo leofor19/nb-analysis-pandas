@@ -306,8 +306,8 @@ print(dfa.loc[dfa.plug.eq(38) & dfa.rep.eq(1) & dfa.pair.eq("(1,6)"), 'abs_max']
 print(dfa.loc[dfa.plug.eq(2) & dfa.rep.eq(1) & dfa.pair.eq("(1,6)"), 'abs_max'].max())
 
 # %%
-print(dfa.loc[dfa.plug.eq(38) & dfa.rep.eq(1) & dfa.distances.eq(0.1306), 'abs_max'].unique())
-print(dfa.loc[dfa.plug.eq(2) & dfa.rep.eq(1) & dfa.distances.eq(0.1306), 'abs_max'].unique())
+print(dfa.loc[dfa.plug.eq(38) & dfa.rep.eq(1) & dfa.distance.eq(0.1306), 'abs_max'].unique())
+print(dfa.loc[dfa.plug.eq(2) & dfa.rep.eq(1) & dfa.distance.eq(0.1306), 'abs_max'].unique())
 
 # %%
 

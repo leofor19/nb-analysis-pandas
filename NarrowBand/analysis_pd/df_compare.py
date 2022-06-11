@@ -236,8 +236,8 @@ def pairwise_comparisons(df, different_attRF = True, different_attLO = False, be
             # skip group comparison for less than one group
             continue
 
-        if "distances".casefold() in data.columns:
-            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distances"]
+        if "distance".casefold() in data.columns:
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distance"]
         else:
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq"]
         data = data.set_index(keys = cols, drop=True).sort_index()
@@ -414,8 +414,8 @@ def pairwise_comparisons2(df, different_attRF = True, different_attLO = False, b
             # skip group comparison for less than one group
             continue
 
-        if "distances".casefold() in data.columns:
-            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distances"]
+        if "distance".casefold() in data.columns:
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distance"]
         else:
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq"]
         data = data.set_index(keys = cols, drop=True).sort_index()
@@ -598,8 +598,8 @@ def pairwsise_comparisons_of_medians(df, different_attRF = True, different_attLO
             # skip group comparison for less than one group
             continue
 
-        if "distances".casefold() in data.columns:
-            cols = ["phantom", "angle", "plug", "date", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distances"]
+        if "distance".casefold() in data.columns:
+            cols = ["phantom", "angle", "plug", "date", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distance"]
         else:
             cols = ["phantom", "angle", "plug", "date", "attLO", "attRF", "pair", "Tx", "Rx", "freq"]
         data = data.drop(["rep", "iter"], axis = 1).groupby(by = cols, observed=True).agg(['median', 'mean', 'std', 'var']).reset_index()
@@ -777,18 +777,18 @@ def specific_comparison(scan1, scan2, comp_columns = "power_dBm"):
             return 0
 
     if ("freq".casefold() in scan1.columns) and ("freq".casefold() in scan2.columns):
-        if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
-            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distances"]
+        if ("distance".casefold() in scan1.columns) and ("distance".casefold() in scan2.columns):
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distance"]
         else:
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq"]
     elif ("samples".casefold() in scan1.columns) and ("samples".casefold() in scan2.columns):
-        if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
-            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "samples", "time", "distances"]
+        if ("distance".casefold() in scan1.columns) and ("distance".casefold() in scan2.columns):
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "samples", "time", "distance"]
         else:
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "samples", "time"]
     elif ("time".casefold() in scan1.columns) and ("time".casefold() in scan2.columns):
-        if ("distances".casefold() in scan1.columns) and ("distances".casefold() in scan2.columns):
-            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "time", "distances"]
+        if ("distance".casefold() in scan1.columns) and ("distance".casefold() in scan2.columns):
+            cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "time", "distance"]
         else:
             cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "time"]
     else:

@@ -128,7 +128,7 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
             df = df.loc[:,~df.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
             clutter = avg_trace_clutter(df, progress_bar = False, center = center)
 
-            df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", "freq", "pair", "Tx", "Rx"], inplace=True)
+            df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", "freq", "pair", "Tx", "Rx"], inplace=True)
             #pairs = df["pair"]
             #TX = df["Tx"]
             #RX = df["Rx"]
@@ -219,20 +219,20 @@ def subtract_clutter(df, clutter, column = 'signal'):
     df = df.loc[:,~df.columns.str.contains('subject', case=False, na=False)]
     df = df.loc[:,~df.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
 
-    # df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel, "pair", "Tx", "Rx"], inplace=True)
-    # df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel], inplace=True)
-    # clutter.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel], inplace=True)
+    # df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", xlabel, "pair", "Tx", "Rx"], inplace=True)
+    # df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", xlabel], inplace=True)
+    # clutter.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", xlabel], inplace=True)
     for col in column:
         clutter.rename(columns={col: "".join((col,"_clutter"))}, inplace = True, errors='ignore')
     # df.merge(clutter['clutter'], how='left', validate = 'many_to_one', left_index = True).reset_index()
     if "attLO" in df.columns:
         df = pd.merge(df, clutter, how='left', validate = 'many_to_one', 
-                    left_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel],
-                    right_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel]).reset_index()
+                    left_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", xlabel],
+                    right_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", xlabel]).reset_index()
     else:
         df = pd.merge(df, clutter, how='left', validate = 'many_to_one', 
-                    left_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "distances", xlabel],
-                    right_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "distances", xlabel]).reset_index()
+                    left_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "distance", xlabel],
+                    right_on = ["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "distance", xlabel]).reset_index()
 
     # if "mean".casefold() in df.columns:
     #     keys = {"raw_digital_ch1_mean": 0, "raw_digital_ch2_mean": 0, "digital_ch1_mean": 0, "digital_ch2_mean": 0, "n_digital_ch1_mean": 8, "n_digital_ch2_mean": 8}
@@ -275,7 +275,7 @@ def avg_trace_clutter(df, progress_bar = True, center='mean', out_as_list = Fals
     -------
     clutter: Pandas df or list of df
         DataFrame(s) with average trace clutter values
-        multi-indexed using ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", "freq"]
+        multi-indexed using ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", "freq"]
     """
     if not isinstance(df, list):
         df = [df]
@@ -312,9 +312,9 @@ def avg_trace_clutter(df, progress_bar = True, center='mean', out_as_list = Fals
             xlabel = 'freq'
 
         if "attLO" in data.columns:
-            c = data.drop(["Tx","Rx"], axis = 1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", xlabel], observed=True).agg([agg_center])
+            c = data.drop(["Tx","Rx"], axis = 1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", xlabel], observed=True).agg([agg_center])
         else:
-            c = data.drop(["Tx","Rx"], axis = 1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "distances", xlabel], observed=True).agg([agg_center])
+            c = data.drop(["Tx","Rx"], axis = 1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "distance", xlabel], observed=True).agg([agg_center])
         c.columns = [x[0] if isinstance(x,tuple) else x for x in c.columns.ravel()]
         if "index" in c.columns:
             c.drop("index", axis=1, inplace=True)

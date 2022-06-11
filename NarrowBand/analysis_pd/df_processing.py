@@ -573,7 +573,7 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
                 full_pairs = allpairs2list(df_list[-1])
 
                 if out_distances:
-                    sorted_pairs, distances = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type,
+                    sorted_pairs, distance = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type,
                                                                         decimals = decimals, out_distances=True, narrowband = narrowband, array_config = array_config)
                 else:
                     sorted_pairs = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type, decimals = decimals, out_distances=False,
@@ -582,9 +582,9 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
                 sorted_pairs = [ "".join(("(", str(p[0]), ",", str(p[1]), ")")) for p in sorted_pairs]
 
                 if out_distances:
-                    d = dict(zip(sorted_pairs,distances))
+                    d = dict(zip(sorted_pairs,distance))
                     dist = df_list[-1].loc[:,"pair"].apply(lambda x: d.get(x)).copy()
-                    df_list[-1] = df_list[-1].assign(distances=dist.values)
+                    df_list[-1] = df_list[-1].assign(distance=dist.values)
 
                 df_list[-1].loc[:,'pair'] = pd.Categorical(df_list[-1].loc[:,"pair"], ordered=True, categories=sorted_pairs)
 
@@ -671,7 +671,7 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
                 full_pairs = allpairs2list2(df_list[-1], select_ref = select_ref)
 
                 if out_distances:
-                    sorted_pairs, distances = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type,
+                    sorted_pairs, distances= dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type,
                                                                         decimals = decimals, out_distances=True, narrowband = narrowband, array_config = array_config)
                 else:
                     sorted_pairs = dfant.sort_pairs(phantom=ph, angle=ang, selected_pairs = full_pairs, reference_point = reference_point, sort_type = sort_type, decimals = decimals, out_distances=False,
@@ -680,9 +680,9 @@ def dfsort_pairs_compared(df, reference_point = "tumor", sort_type = "distance",
                 sorted_pairs = [ "".join(("(", str(p[0]), ",", str(p[1]), ")")) for p in sorted_pairs]
 
                 if out_distances:
-                    d = dict(zip(sorted_pairs,distances))
+                    d = dict(zip(sorted_pairs,distance))
                     dist = df_list[-1].loc[:,"pair"].apply(lambda x: d.get(x)).copy()
-                    df_list[-1] = df_list[-1].assign(distances=dist.values)
+                    df_list[-1] = df_list[-1].assign(distance=dist.values)
 
                 df_list[-1].loc[:,'pair'] = pd.Categorical(df_list[-1].loc[:,"pair"], ordered=True, categories=sorted_pairs)
 
@@ -749,7 +749,7 @@ def subgroup_distances(df, bins = np.concatenate([[0.02], np.arange(4, 14, step 
     df: DataFrame or list of DataFrame
         output DataFrame or list of DataFrame (when out_as_list is set to True)
     """
-    if ~df[0].columns.str.contains('distance', case=False, na=False).any():
+    if ~df.columns.str.contains('distance', case=False, na=False).any():
         if "phantom_1" in df:
             df = dfsort_pairs_compared(df, reference_point = reference_point, sort_type = sort_type, decimals =  decimals, out_distances = True,
                                         out_as_list = False, narrowband = narrowband, array_config = array_config)
@@ -758,12 +758,12 @@ def subgroup_distances(df, bins = np.concatenate([[0.02], np.arange(4, 14, step 
                                 out_as_list = False, narrowband = narrowband, array_config = array_config)
     if bins is not None:
         # splits values in bins
-        # df.loc[:, "group_distance"] = pd.cut(df.distances, bins = bins, right=True, labels=False, retbins=False, precision=3, include_lowest=False, duplicates='raise', ordered=True)
-        df.loc[:, "bin"] = np.digitize(df.distances.to_numpy(), bins = bins, right=True) - 1
+        # df.loc[:, "group_distance"] = pd.cut(df.distance, bins = bins, right=True, labels=False, retbins=False, precision=3, include_lowest=False, duplicates='raise', ordered=True)
+        df.loc[:, "bin"] = np.digitize(df.distance.to_numpy(), bins = bins, right=True) - 1
 
-        df.loc[:, "orig_distance"] = df.loc[:, "distances"]
-        # df.loc[:, "distances"] = [bins[i] for i in df.bin.to_numpy()]
-        df.loc[:, "distances"] = np.take(bins, df.bin.to_numpy())
+        df.loc[:, "orig_distance"] = df.loc[:, "distance"]
+        # df.loc[:, "distance"] = [bins[i] for i in df.bin.to_numpy()]
+        df.loc[:, "distance"] = np.take(bins, df.bin.to_numpy())
 
     if out_as_list:
         df = split_df(df, groups= ["phantom", "angle"])
@@ -2702,7 +2702,7 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
         out_path = "".join((main_path,d,"/",processed_path,"Decluttered/{0} Phantom Set Decluttered.parquet".format(d)))
 
         df_list = df_collect(main_paths, is_recursive=is_recursive, file_format=file_format, columns=columns)
-        if ~df_list[0].columns.str.contains('distances', case=False, na=False).all():
+        if ~df_list[0].columns.str.contains('distance', case=False, na=False).all():
             df_list = dfsort_pairs(df_list, reference_point = "tumor", sort_type = "between_antennas", decimals = 4, out_distances = True)
 
         decl_list = []
@@ -2721,7 +2721,7 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
             df = df.loc[:,~df.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
             clutter = avg_trace_clutter(df, progress_bar = False, center = center)
 
-            df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", "freq", "pair", "Tx", "Rx"], inplace=True)
+            df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", "freq", "pair", "Tx", "Rx"], inplace=True)
             #pairs = df["pair"]
             #TX = df["Tx"]
             #RX = df["Rx"]
@@ -2781,12 +2781,12 @@ def avg_trace_clutter(df, progress_bar = True, center='mean'):
     -------
     clutter: Pandas df or list of df
         DataFrame(s) with average trace clutter values
-        multi-indexed using ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", "freq"]
+        multi-indexed using ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", "freq"]
     """
     if not isinstance(df, list):
         df = [df]
 
-    if ~df[0].columns.str.contains('distances', case=False, na=False).all():
+    if ~df[0].columns.str.contains('distance', case=False, na=False).all():
         df = dfsort_pairs(df, reference_point = "tumor", sort_type = "between_antennas", decimals = 4, out_distances = True)
 
     if center == 'median':
@@ -2806,7 +2806,7 @@ def avg_trace_clutter(df, progress_bar = True, center='mean'):
             data = data.loc[:,~data.columns.str.contains('(?=.*voltage)(?=.*mag|.*phase).*', case=False, na=False)]
         data = data.loc[:,~data.columns.str.contains('subject', case=False, na=False)]
         data = data.loc[:,~data.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
-        c = data.drop(["Tx","Rx"], axis = 1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distances", "freq"], observed=True).agg([agg_center])
+        c = data.drop(["Tx","Rx"], axis = 1).groupby(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", "freq"], observed=True).agg([agg_center])
         c.columns = [x[0] if isinstance(x,tuple) else x for x in c.columns.ravel()]
         if "index" in c.columns:
             c.drop("index", axis=1, inplace=True)

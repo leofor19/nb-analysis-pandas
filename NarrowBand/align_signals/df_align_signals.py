@@ -192,13 +192,13 @@ def df_align_signals(df, df_ref, column = 'signal', sort_col = 'time', max_delay
     #     df, df_ref = dfcomp.remove_non_intersection(df, df_ref, column = "time")
 
     # if ("freq".casefold() in df.columns) and ("freq".casefold() in df_ref.columns):
-    #     if ("distances".casefold() in df.columns) and ("distances".casefold() in df_ref.columns):
-    #         cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distances"]
+    #     if ("distance".casefold() in df.columns) and ("distance".casefold() in df_ref.columns):
+    #         cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq", "distance"]
     #     else:
     #         cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "freq"]
     # elif ("time".casefold() in df.columns) and ("time".casefold() in df_ref.columns):
-    #     if ("distances".casefold() in df.columns) and ("distances".casefold() in df_ref.columns):
-    #         cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "time", "distances"]
+    #     if ("distance".casefold() in df.columns) and ("distance".casefold() in df_ref.columns):
+    #         cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "time", "distance"]
     #     else:
     #         cols = ["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "pair", "Tx", "Rx", "time"]
     # else:
@@ -392,10 +392,8 @@ def df_align_signals_same_distance(df, column = 'signal', bins = None, sort_col 
 
     Parameters
     ----------
-    df1 : Pandas df
-        input DataFrame 1
-    df2 : Pandas df
-        input DataFrame 2
+    df : Pandas df
+        input DataFrame
     column : str or list of str, optional
         DataFrame column(s) to align, by default 'signal'
     max_delay : int or None, optional
@@ -458,8 +456,8 @@ def df_align_signals_same_distance(df, column = 'signal', bins = None, sort_col 
             data = data.sort_values(by=["phantom", "angle", "plug", "date", "rep", "iter", "attRF", "pair", "Tx", "Rx", sort_col])
         data = data.reset_index(drop = False)
 
-        for d in tqdm(data.distances.unique(), leave = False):
-            pairs = data.loc[data.distances.eq(d)].pair.unique()
+        for d in tqdm(data.distance.unique(), leave = False):
+            pairs = data.loc[data.distance.eq(d)].pair.unique()
             p1 = pairs[0]
             for p2 in tqdm(pairs[1:], leave = False, disable = True):
                 for c in tqdm(column, leave = False, disable = True):
