@@ -24,12 +24,12 @@ from natsort import natsorted, natsort_keygen
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from NarrowBand import nb_czt
 
 # Local application imports
 #from ..NarrowBand.analysis_pd import df_processing as dfproc
 # sys.path.insert(1, os.path.abspath('C:/Users/leofo/OneDrive - McGill University/Documents McGill/2019.2/LabTools Scripts/2021_12_03 Adaptations 15/'))
-sys.path.insert(1, os.path.abspath('C:/Users/leofo/Documents/Github/nb-analysis-pandas/'))
+# sys.path.insert(1, os.path.abspath('C:/Users/leofo/Documents/Github/nb-analysis-pandas/'))
+sys.path.insert(1, os.path.abspath('C:/Users/lforta/OneDrive - McGill University/Documents McGill/Github/nb-analysis-pandas/'))
 import NarrowBand.align_signals.df_align_signals as dfal
 from NarrowBand.analysis_pd import df_processing as dfproc
 from NarrowBand.analysis_pd import df_compare as dfcomp
@@ -52,6 +52,7 @@ date = "2020_09_18/"
 # main_path = "C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/"
 # data_path = f"C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/{date}/Processed/DF 04/TD/{date} Phantom Set Means CZT TD.parquet"
 data_path = f"C:/Users/lforta/OneDrive - McGill University/UWB Data Analysis/2020_01_24_IC_PG_Comparison_Phantoms/UWB_System_Picosecond/Phantom1/Tumor1/"
+# data_path = f"C:/Users/lforta/OneDrive - McGill University/UWB Data Analysis/2020_01_24_IC_PG_Comparison_Phantoms/UWB_System_Picosecond/Phantom1/Baseline1/"
 
 # Main location path of Pandas DataFrame files (.parquet)
 
@@ -104,7 +105,7 @@ df = dfproc.dfsort_pairs(df, sort_type = 'between_antennas', out_distances = Tru
 
 df = normalize.normalize_pulses(df, column = 'signal', method = 'normalize_peak')
 
-dfa = dfal.df_align_signals_same_distance(df,  column = ['signal' ,'magnitude'], sort_col = 'sample', max_delay = 10, truncate = True, align_power = True, narrowband = False)
+dfa = dfal.df_align_signals_same_distance(df,  column = ['signal' ,'magnitude'], sort_col = 'samples', max_delay = 10, truncate = True, align_power = True, narrowband = False)
 
 # del dfout
 
