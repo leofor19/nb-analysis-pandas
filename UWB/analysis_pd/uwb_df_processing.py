@@ -47,7 +47,7 @@ class Scan_settings:
     Can be initiated by performing:
 
     s = Scan_settings(phantom = 1, angle = 0, plug = 2, rep = 1, iter = 1, sampling_rate = 160e9, date = '2020-01-24', attRF = 0, HP_amp = 35, LNA_amp = 25, 
-                        sig_names = ['raw_transmission', 'raw_signal'], array_config = 'hemisphere', obs = '')
+                        f_low = 1.7e9, f_high = 4e9, sig_names = ['raw_signal', 'raw_transmission'], array_config = 'hemisphere', obs = '')
 
     Defaults include:
         phantom = 1

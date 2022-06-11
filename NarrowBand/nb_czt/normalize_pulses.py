@@ -111,7 +111,7 @@ def normalize_pulses(df, column = 'signal', method = 'normalization_peak', use_s
     Accepts phantom or calibration scans. Initially splits DataFrame in groups depending on key columns (up to the antenna pairs).
     Normalizes by subtracting mean of signal and dividing by absolute maximum.
 
-    Can optionally pply division by standard deviation instead of absolute maximum (standardization).
+    Can optionally apply division by standard deviation instead of absolute maximum (standardization).
 
     Parameters
     ----------

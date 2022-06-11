@@ -24,6 +24,7 @@ from natsort import natsorted, natsort_keygen
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from NarrowBand import nb_czt
 
 # Local application imports
 #from ..NarrowBand.analysis_pd import df_processing as dfproc
@@ -35,6 +36,7 @@ from NarrowBand.analysis_pd import df_compare as dfcomp
 from NarrowBand.analysis_pd import df_declutter as dfdec
 from NarrowBand.analysis_pd.safe_arange import safe_arange
 from NarrowBand.nb_czt import czt as czt
+from NarrowBand.nb_czt import normalize_pulses as normalize
 from UWB.analysis_pd import uwb_df_processing as uwbproc
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -81,7 +83,7 @@ target_time = safe_arange(0, 40e-9 + 5e-10, step = 5e-10)
 # # UWB Phantom Scan Data Read to Pandas
 
 scan = uwbproc.Scan_settings(phantom = 1, angle = 0, plug = 38, rep = 1, iter = 1, sampling_rate = 160e9, date = '2019-09-11', attRF = 0, HP_amp = 35, LNA_amp = 25, 
-                        sig_names = ['transmission', 'signal'], obs = '')
+                        f_low = 1.7e9, f_high = 4e9, sig_names = ['raw_signal', 'raw_transmission'], obs = '')
 
 df = uwbproc.uwb_data_read2pandas(data_path, out_path = out_path,
                             processed_path = "Processed/DF/", settings = scan, save_file = True, save_format="parquet", parquet_engine= 'pyarrow',
@@ -100,11 +102,13 @@ df = dfproc.dfsort_pairs(df, sort_type = 'between_antennas', out_distances = Tru
 # # dfa2 = dfal.df_align_signals(df, ref_df, column = 'power', sort_col = 'sample', max_delay = 10, truncate = True, align_power = False)
 # # dfa.loc[:,'power'] = dfa2.loc[:,'power']
 
-dfa = dfal.df_align_signals_same_distance(df,  column = ['signal' ,'magnitude'], sort_col = 'sample', max_delay = 10, truncate = True, align_power = True)
+df = normalize.normalize_pulses(df, column = 'signal', method = 'normalize_peak')
+
+dfa = dfal.df_align_signals_same_distance(df,  column = ['signal' ,'magnitude'], sort_col = 'sample', max_delay = 10, truncate = True, align_power = True, narrowband = False)
 
 # del dfout
 
-dfa = dfproc.dfsort_pairs(dfa, sort_type = 'between_antennas', out_distances = True, out_as_list= False)
+dfa = dfproc.dfsort_pairs(dfa, sort_type = 'between_antennas', out_distances = True, out_as_list= False, narrowband= False)
 
 # %%
 # # Clutter
