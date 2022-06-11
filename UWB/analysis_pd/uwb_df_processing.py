@@ -47,7 +47,7 @@ class Scan_settings:
     Can be initiated by performing:
 
     s = Scan_settings(phantom = 1, angle = 0, plug = 2, rep = 1, iter = 1, sampling_rate = 160e9, date = '2020-01-24', attRF = 0, HP_amp = 35, LNA_amp = 25, 
-                        f_low = 1.7e9, f_high = 4e9, sig_names = ['raw_signal', 'raw_transmission'], array_config = 'hemisphere', obs = '')
+                        f_low = 1.7e9, f_high = 4e9, sig_names = ['raw_signal', 'raw_transmission'], array_config = 'hemisphere', system ='uwb-v004', obs = '')
 
     Defaults include:
         phantom = 1
@@ -64,6 +64,7 @@ class Scan_settings:
         LNA_amp = 25 # [dB]
         sig_names = ['raw_signal', 'raw_transmission'] # (list of column names)
         array_config = 'hemisphere'
+        system ='uwb-v004'
         obs = '' # (string for notes and further info)
     """
     def __init__(self, **kwargs):
@@ -87,6 +88,7 @@ class Scan_settings:
 
         self.sig_names = ['raw_signal', 'raw_transmission']
         self.array_config = 'hemisphere'
+        self.system = 'uwb-v004'
         self.obs = ''
 
         self.update_values(**kwargs)
