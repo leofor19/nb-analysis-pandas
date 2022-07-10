@@ -1,8 +1,8 @@
 # Python 3.8
 # 2021-03-05
 
-# Version 1.2.7
-# Latest update 2022-03-07
+# Version 1.2.8
+# Latest update 2022-07-10
 
 # Leonardo Fortaleza (leonardo.fortaleza@mail.mcgill.ca)
 
@@ -1023,14 +1023,14 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
                     base_path = main_path + date_path + processed_path + cal_path + conv_path
                     if not os.path.exists(os.path.dirname(base_path)):
                         os.makedirs(os.path.dirname(base_path))
-                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 1 V", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
+                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 1 V", "Rep", str(rep[x]), "Iter", str(ite[x])))
 
                 else:
 
                     base_path = main_path + date_path + processed_path + cal_path
                     if not os.path.exists(os.path.dirname(base_path)):
                         os.makedirs(os.path.dirname(base_path))
-                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 1 D", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
+                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 1 D", "Rep", str(rep[x]), "Iter", str(ite[x])))
 
                 if save_format.casefold() == "parquet":
                     if parquet_engine == 'pyarrow':
@@ -1177,14 +1177,14 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
                     base_path = main_path + date_path + processed_path + cal_path + conv_path
                     if not os.path.exists(os.path.dirname(base_path)):
                         os.makedirs(os.path.dirname(base_path))
-                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 2 V", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
+                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 2 V", "Rep", str(rep[x]), "Iter", str(ite[x])))
 
                 else:
 
                     base_path = main_path + date_path + processed_path + cal_path
                     if not os.path.exists(os.path.dirname(base_path)):
                         os.makedirs(os.path.dirname(base_path))
-                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 2 D", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
+                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 2 D", "Rep", str(rep[x]), "Iter", str(ite[x])))
 
                 if save_format.casefold() == "parquet":
                     if parquet_engine == 'pyarrow':
@@ -1333,14 +1333,14 @@ def cal_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Doc
                     base_path = main_path + date_path + processed_path + cal_path + conv_path
                     if not os.path.exists(os.path.dirname(base_path)):
                         os.makedirs(os.path.dirname(base_path))
-                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 3 V", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
+                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 3 V", "Rep", str(rep[x]), "Iter", str(ite[x])))
 
                 else:
 
                     base_path = main_path + date_path + processed_path + cal_path
                     if not os.path.exists(os.path.dirname(base_path)):
                         os.makedirs(os.path.dirname(base_path))
-                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 3 D", "Rep", str(rep[x-1]), "Iter", str(ite[x-1])))
+                    file_title = " ".join((date_path.replace( "/",""), "Calibration Type 3 D", "Rep", str(rep[x]), "Iter", str(ite[x])))
 
                 if save_format.casefold() == "parquet":
                     if parquet_engine == 'pyarrow':
@@ -1661,11 +1661,11 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
         max_rep2 = df21.loc[df21.date.eq(d), "rep"].astype(int).max()
         max_iter2 = df21.loc[df21.date.eq(d), "iter"].astype(int).max()
         if df3.loc[df3.date.eq(d), "rep"].astype(int).max() > max_rep2:
-            for extra_rep in df3.loc[df3.date.eq(d), "rep"].unique()[df3.loc[df3.date.eq(d), "rep"].unique() > max_rep2]:
+            for extra_rep in df3.loc[df3.date.eq(d), "rep"].unique()[df3.loc[df3.date.eq(d), "rep"].unique().astype(int) > max_rep2]:
                     df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "c_digital_ch1"] = df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "digital_ch1"] - df21.loc[df3.date.eq(d) & df21.rep.eq(max_rep2), "digital_ch1"].values
                     df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "c_digital_ch2"] = df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "digital_ch2"] - df21.loc[df3.date.eq(d) & df21.rep.eq(max_rep2), "digital_ch2"].values
         if df3.loc[df3.date.eq(d), "iter"].astype(int).max() > max_iter2:
-            for extra_iter in df3.loc[df3.date.eq(d), "iter"].unique()[df3.loc[df3.date.eq(d), "iter"].unique() > max_iter2]:
+            for extra_iter in df3.loc[df3.date.eq(d), "iter"].unique()[df3.loc[df3.date.eq(d), "iter"].unique().astype(int) > max_iter2]:
                 df3.loc[df3.date.eq(d) & df3.iter.eq(extra_iter), "c_digital_ch1"] = df3.loc[df3.date.eq(d) & df3.iter.eq(extra_iter), "digital_ch1"] 
                 - df21.loc[df3.date.eq(d) & df21.iter.eq(max_iter2), "digital_ch1"].values
                 df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep) & df3.iter.eq(extra_iter), "c_digital_ch2"] = df3.loc[df3.date.eq(d) & df3.iter.eq(extra_iter), "digital_ch2"] 
@@ -1715,7 +1715,7 @@ def cal_data_pd_agg(date, main_path = "{}/OneDrive - McGill University/Documents
     for d in df3.date.drop_duplicates().tolist():
         max_rep2 = df21.loc[df21.date.eq(d), "rep"].astype(int).max()
         if df3.loc[df3.date.eq(d), "rep"].astype(int).max() > max_rep2:
-            for extra_rep in df3.loc[df3.date.eq(d), "rep"].unique()[df3.loc[df3.date.eq(d), "rep"].unique() > max_rep2]:
+            for extra_rep in df3.loc[df3.date.eq(d), "rep"].unique()[df3.loc[df3.date.eq(d), "rep"].unique().astype(int) > max_rep2]:
                     df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "c_digital_ch1"] = df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "digital_ch1"] - df23.loc[df3.date.eq(d) & df23.rep.eq(max_rep2), "digital_ch1"].values
                     df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "c_digital_ch2"] = df3.loc[df3.date.eq(d) & df3.rep.eq(extra_rep), "digital_ch2"] - df23.loc[df3.date.eq(d) & df23.rep.eq(max_rep2), "digital_ch2"].values
 
@@ -2103,7 +2103,7 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
 
         frequencies = np.unique(freq)
 
-        # Uses calibration type 2 data for offset removal (in digital scale). Currently assumes Rep 1 for calibration.
+        # Uses calibration type 2 data for offset removal (in digital scale). Currently uses aggregatted means of all Reps for calibration.
 
         if cal_option == 0:
             cal_mean_2 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_type = 2)
@@ -2341,10 +2341,10 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
                         os.makedirs(os.path.dirname(base_path))
 
                     if cal_option == 0:
-                        file_title = "Phantom {0:} Angle {1:} Plug {2:} Rep {3:} Iter {4:} V".format(phantom[x-1], angle[x-1], plug[x-1], rep[x-1], ite[x-1])
+                        file_title = "Phantom {0:} Angle {1:} Plug {2:} Rep {3:} Iter {4:} V".format(phantom[x], angle[x], plug[x], rep[x], ite[x])
                     else:
-                        file_title = "Calibration Type {0:} Phantom {1:} Angle {2:} Plug {3:} Rep {4:} Iter {5:} V".format(cal_option, phantom[x-1], angle[x-1], 
-                                        plug[x-1], rep[x-1], ite[x-1])
+                        file_title = "Calibration Type {0:} Phantom {1:} Angle {2:} Plug {3:} Rep {4:} Iter {5:} V".format(cal_option, phantom[x], angle[x], 
+                                        plug[x], rep[x], ite[x])
                         df["cal_type"] = cal_option
 
                     if save_format == "parquet":
@@ -2362,10 +2362,10 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
                         os.makedirs(os.path.dirname(base_path))
 
                     if cal_option == 0:
-                        file_title = "Phantom {0:} Angle {1:} Plug {2:} Rep {3:} Iter {4:} D".format(phantom[x-1], angle[x-1], plug[x-1], rep[x-1], ite[x-1])
+                        file_title = "Phantom {0:} Angle {1:} Plug {2:} Rep {3:} Iter {4:} D".format(phantom[x], angle[x], plug[x], rep[x], ite[x])
                     else:
-                        file_title = "Calibration Type {0:} Phantom {1:} Angle {2:} Plug {3:} Rep {4:} Iter {5:} D".format(cal_option, phantom[x-1], angle[x-1], 
-                                        plug[x-1], rep[x-1], ite[x-1])
+                        file_title = "Calibration Type {0:} Phantom {1:} Angle {2:} Plug {3:} Rep {4:} Iter {5:} D".format(cal_option, phantom[x], angle[x], 
+                                        plug[x], rep[x], ite[x])
                         df["cal_type"] = cal_option
 
                     if save_format.casefold() == "parquet":
@@ -2602,6 +2602,13 @@ def calibration_mean_dataframe(date, main_path = "{}/OneDrive - McGill Universit
         main path to files, by default "{}/OneDrive - McGill University/Documents McGill/Data/PScope/".format(os.environ['USERPROFILE'])
     cal_type : int, optional
         cslibration type, by default 2
+    cal_path : str, optional
+        path to calibration "Means Agg" files, by default "Calibration/Means Agg/"
+	parquet_engine: str, optional
+        Parquet reader library to use, by default 'pyarrow'
+        Options include: 'auto', 'fastparquet', 'pyarrow'.
+        If 'auto', then the option io.parquet.engine is used.
+        The default io.parquet.engine behavior is to try 'pyarrow',
 
     Returns
     -------
