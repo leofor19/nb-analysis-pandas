@@ -1,3 +1,6 @@
 *.pyc
 *.whl
 *.tar
+/NarrowBand/analysis_pd/*.bak
+/numpyencoder/dist/*.gz
+/scripts/*.bak

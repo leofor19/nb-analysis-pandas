@@ -42,10 +42,11 @@ from dask.diagnostics import ProgressBar
 from natsort import natsorted
 import numpy as np
 import pandas as pd
+from tqdm.autonotebook import tqdm # automatic notebook/terminal selection (previously didn't work with VSCode)
 # from tqdm import tqdm # when using terminal
-from tqdm.notebook import tqdm # when using Jupyter Notebook
+# from tqdm.notebook import tqdm # when using Jupyter Notebook
 #from tqdm.dask import TqdmCallback
-from yaspin import yaspin
+# from yaspin import yaspin
 
 # Local application imports
 import NarrowBand.analysis_pd.df_antenna_space as dfant
@@ -2106,11 +2107,11 @@ def case_data_read2pandas(dates, main_path = "{}/OneDrive - McGill University/Do
         # Uses calibration type 2 data for offset removal (in digital scale). Currently uses aggregatted means of all Reps for calibration.
 
         if cal_option == 0:
-            cal_mean_2 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_type = 2)
-            cal_mean_3 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_type = 3)
+            cal_mean_2 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_path = "Calibration/Means Agg/", cal_type = 2)
+            cal_mean_3 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_path = "Calibration/Means Agg/", cal_type = 3)
         else:
-            cal_mean_2 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_path = "Means Agg/", cal_type = 2)
-            cal_mean_3 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_path = "Means Agg/", cal_type = 3)
+            cal_mean_2 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_path = "Calibration/Means Agg/", cal_type = 2)
+            cal_mean_3 = calibration_mean_dataframe(date = date_path, main_path = main_path, processed_path = processed_path, cal_path = "Calibration/Means Agg/", cal_type = 3)
 
         data = np.empty((0,2))
         time = np.empty((0,1))
@@ -2609,6 +2610,7 @@ def calibration_mean_dataframe(date, main_path = "{}/OneDrive - McGill Universit
         Options include: 'auto', 'fastparquet', 'pyarrow'.
         If 'auto', then the option io.parquet.engine is used.
         The default io.parquet.engine behavior is to try 'pyarrow',
+        falling back to 'fastparquet' if 'pyarrow' is unavailable.
 
     Returns
     -------

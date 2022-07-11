@@ -43,11 +43,11 @@ file_format = "parquet"
 
 # Sub-Folder
 
-sub_folder = "Conv/"
+sub_folder = ""
 
 # Processed path
 
-processed_path = "Processed/DF 04/"
+processed_path = "Processed/DF 05/"
 
 # Converted path
 
