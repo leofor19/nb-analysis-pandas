@@ -54,7 +54,7 @@ from scipy.io import savemat
 from scipy import signal
 import seaborn as sns
 # from tqdm import tqdm # when using terminal
-from tqdm.notebook import tqdm # when using Jupyter Notebook
+from tqdm.autonotebook import tqdm # when using Jupyter Notebook
 #from tqdm.dask import TqdmCallback
 
 # Local application imports

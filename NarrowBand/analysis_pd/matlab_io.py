@@ -8,7 +8,7 @@ import numpy as np
 from pymatreader import read_mat
 from scipy.io import savemat
 # from tqdm import tqdm # when using terminal
-from tqdm.notebook import tqdm # when using Jupyter Notebook
+from tqdm.autonotebook import tqdm # when using Jupyter Notebook
 #from tqdm.dask import TqdmCallback
 
 # Local application imports

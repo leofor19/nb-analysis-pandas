@@ -2,9 +2,9 @@
 
 # uses nb38 environment
 
-# Using DF 04 data sets
+# Using DF 05 data sets
 
-# 2022/04/28
+# 2022/07/19
 
 """Script for converting narrowband (NB) data scans (from Pandas DataFrames) from Frequency Domain (FD) to Time Domain (TD) via Chirp-Z Transform (CZT),
 as well as perform time-domain signal alignment (via cross-correlation) and normalizion.
@@ -22,7 +22,7 @@ import sys
 # Third-party library imports
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 
 # Local application imports
 sys.path.insert(1, os.path.abspath('C:/Users/leofo/Documents/Github/nb-analysis-pandas/'))
@@ -132,7 +132,7 @@ ideal['signal'] = np.real_if_close(ideal['signal'].to_numpy())
 
 for date in tqdm(meas_dates):
 
-    cal_path3 = "".join((main_path, f"{date}/Processed/DF 04/Calibration/Means/{date} Calibration Processed Means Type 3.parquet"))
+    cal_path3 = "".join((main_path, f"{date}/Processed/DF 05/Calibration/Means/{date} Calibration Processed Means Type 3.parquet"))
 
     cal_df3 = pd.read_parquet(cal_path3, engine='pyarrow')
 
@@ -151,7 +151,7 @@ for date in tqdm(meas_dates):
 
     dfout31 = nbczt.czt_df_invert_to_time_domain(df3, t= target_time, conj_sym=False)
 
-    dfout31, _ = dfal.df_align_signals(dfout31, ideal, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, fixed_df2 = True, align_power = True)
+    dfout31 = dfal.df_align_signals(dfout31, ideal, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, align_power = True)
 
     # dfout31, _ = dfal.direct_df_align_signals(dfout31.loc[dfout31.rep.eq(1) & dfout31.iter.eq(1)], ideal, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, fixed_df2 = True)
 
@@ -162,7 +162,7 @@ for date in tqdm(meas_dates):
     dfout3['magnitude'] = dfout3['signal'].abs()
     dfout3['power'] = dfout3['signal']**2
 
-    out_path_cal = "".join((main_path, f'{date}/Processed/DF 04/TD/Calibration/{date} Calibration Means Type 3 CZT TD.parquet'))
+    out_path_cal = "".join((main_path, f'{date}/Processed/DF 05/TD/Calibration/{date} Calibration Means Type 3 CZT TD.parquet'))
     if not os.path.exists(os.path.dirname(out_path_cal)):
         os.makedirs(os.path.dirname(out_path_cal))
     dfout3.reset_index().to_parquet(out_path_cal, engine='pyarrow')
@@ -173,7 +173,7 @@ for date in tqdm(meas_dates):
 
 for date in tqdm(meas_dates):
 
-    data_path = "".join((main_path, f"{date}/Processed/DF 04/Means/{date} Phantom Set Means.parquet"))
+    data_path = "".join((main_path, f"{date}/Processed/DF 05/Means/{date} Phantom Set Means.parquet"))
 
     df = pd.read_parquet(data_path, engine='pyarrow')
 
@@ -211,8 +211,8 @@ for date in tqdm(meas_dates):
 
     # del df, df1
 
-    out_path_data = "".join((main_path, f'{date}/Processed/DF 04/TD/{date} Phantom Set Means CZT TD.parquet'))
+    out_path_data = "".join((main_path, f'{date}/Processed/DF 05/TD/{date} Phantom Set Means CZT TD.parquet'))
     if not os.path.exists(os.path.dirname(out_path_data)):
         os.makedirs(os.path.dirname(out_path_data))
-    dfout1.reset_index().to_parquet(out_path_data, engine='pyarrow')
+    dfout1.reset_index(drop=True).to_parquet(out_path_data, engine='pyarrow')
     tqdm.write(f"\nSaved file: {out_path_data}        ")

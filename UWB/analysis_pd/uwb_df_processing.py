@@ -36,7 +36,7 @@ from natsort import natsorted
 import numpy as np
 import pandas as pd
 # from tqdm import tqdm # when using terminal
-from tqdm.notebook import tqdm # when using Jupyter Notebook
+from tqdm.autonotebook import tqdm # when using Jupyter Notebook
 
 # Local imports
 from UWB.analysis_pd.matlab_bandpass import matlab_bandpass

@@ -43,7 +43,7 @@ import scipy.signal as signal
 # from scipy import sparse
 # import seaborn as sns
 # from tqdm import tqdm # when using terminal
-from tqdm.notebook import tqdm # when using Jupyter Notebook
+from tqdm.autonotebook import tqdm # when using Jupyter Notebook
 #from tqdm.dask import TqdmCallback
 
 # Local application imports

@@ -2,7 +2,7 @@
 
 # uses nb38 environment
 
-# Using DF 04 data sets
+# Using DF 05 data sets
 
 # 2022/04/28
 
@@ -22,7 +22,7 @@ import sys
 # Third-party library imports
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 
 # Local application imports
 sys.path.insert(1, os.path.abspath('C:/Users/leofo/Documents/Github/nb-analysis-pandas/'))
@@ -44,11 +44,11 @@ date = "2020_09_18"
 ## Main location path of Pandas DataFrame files (.parquet)
 
 # main_path = "C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/"
-data_path = f"C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/{date}/Processed/DF 04/Means/{date} Phantom Set Means.parquet"
+data_path = f"C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/{date}/Processed/DF 05/Means/{date} Phantom Set Means.parquet"
 
 ## Main location path of Pandas DataFrame files (.parquet) for Calibration Type 3 (Tx bypassed)
 
-cal_path3 = f"C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/{date}/Processed/DF 04/Calibration/Means/{date} Calibration Processed Means Type 3.parquet"
+cal_path3 = f"C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/{date}/Processed/DF 05/Calibration/Means/{date} Calibration Processed Means Type 3.parquet"
 
 ## Frequency subset for calibration pulses (can be set to None for full set):
 
@@ -132,7 +132,7 @@ df3 = nbczt.apply_fft_window(df3, window_type = window_type, column = ['czt'])
 
 dfout31 = nbczt.czt_df_invert_to_time_domain(df3, t= target_time, conj_sym=False)
 
-dfout31, _ = dfal.df_align_signals(dfout31, ideal, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, fixed_df2 = True, align_power = True)
+dfout31 = dfal.df_align_signals(dfout31, ideal, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, align_power = True)
 
 # dfout31, _ = dfal.direct_df_align_signals(dfout31.loc[dfout31.rep.eq(1) & dfout31.iter.eq(1)], ideal, column = 'signal', sort_col = 'time', max_delay = None, truncate = True, fixed_df2 = True)
 
@@ -191,5 +191,5 @@ dfout1['power'] = dfout1['signal']**2
 if not os.path.exists(os.path.dirname(out_path)):
     os.makedirs(os.path.dirname(out_path))
 out_path_data = "".join((out_path, f'{date} Phantom Set Means CZT TD.parquet'))
-dfout1.reset_index().to_parquet(out_path_data, engine='pyarrow')
+dfout1.reset_index(drop=True).to_parquet(out_path_data, engine='pyarrow')
 tqdm.write(f"\nSaved file: {out_path_data}        ")

@@ -33,7 +33,7 @@ import os.path
 from natsort import natsort_keygen
 import numpy as np
 # from tqdm import tqdm # when using terminal
-from tqdm.notebook import tqdm # when using Jupyter Notebook
+from tqdm.autonotebook import tqdm # when using Jupyter Notebook
 
 # Local application imports
 

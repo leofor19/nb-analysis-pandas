@@ -59,7 +59,7 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
 
     Uses a simple clutter rejection technique in the form of a spatial filter.
 
-    Calculates average singal per frequency/time for antenna pairs with a same distance (assuming the clutter is constant for such pairs).
+    Calculates average signal per frequency/time for antenna pairs with a same distance (assuming the clutter is constant for such pairs).
 
     Next, subtracts this mean clutter from the original signals.
 
@@ -82,7 +82,7 @@ def simple_declutter(date, main_path = "{}/OneDrive - McGill University/Document
     conv_path : str, optional
         sub-folder for JSON files of converted data (if correction != 1), by default "Converted/"
     decimals : int, optional
-        number of decimals cases for np.arounding values, in particular after conversion, by default 2
+        number of decimals cases for np.around values, in particular after conversion, by default 2
     file_format: str
         target file format (either "parquet" or "csv"), by default "parquet"
     center: str, optional
@@ -217,7 +217,8 @@ def subtract_clutter(df, clutter, column = 'signal'):
     else:
         vunit = None
     df = df.loc[:,~df.columns.str.contains('subject', case=False, na=False)]
-    df = df.loc[:,~df.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
+    if ("digital_ch1" not in column) and ("digital_ch2" not in column):
+        df = df.loc[:,~df.columns.str.contains('(?=.*digital)(?!.*ch[12]).*', case=False, na=False)]
 
     # df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", xlabel, "pair", "Tx", "Rx"], inplace=True)
     # df.set_index(["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF", "distance", xlabel], inplace=True)
@@ -256,7 +257,7 @@ def subtract_clutter(df, clutter, column = 'signal'):
 def avg_trace_clutter(df, progress_bar = True, center='mean', out_as_list = False):
     """Calculate average trace cluttter per distance between antennas and per frequency.
 
-    Calculates average singal per frequency/time for antenna pairs with a same distance (assuming the clutter is constant for such pairs).
+    Calculates average signal per frequency/time for antenna pairs with a same distance (assuming the clutter is constant for such pairs).
 
     Only uses digital signals.
 

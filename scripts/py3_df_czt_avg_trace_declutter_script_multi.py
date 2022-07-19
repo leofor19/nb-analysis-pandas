@@ -2,9 +2,9 @@
 
 # uses nb38 environment
 
-# Using DF 04 data sets
+# Using DF 05 data sets
 
-# 2022/04/29
+# 2022/07/19
 
 """Script for performing Average Trace Subtraction decluttering on phantom data scan DataFrames in the Time Domain (TD), after
 performing time-domain signal alignment (via cross-correlation) and normalizion.
@@ -23,7 +23,7 @@ import sys
 from natsort import natsorted, natsort_keygen
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 
 # Local application imports
 #from ..NarrowBand.analysis_pd import df_processing as dfproc
@@ -92,7 +92,7 @@ target_time = safe_arange(0, 40e-9 + 5e-10, step = 5e-10)
 # %%
 for date in tqdm(meas_dates):
 
-    data_path = "".join((main_path, f"{date}/Processed/DF 04/TD/{date} Phantom Set Means CZT TD.parquet"))
+    data_path = "".join((main_path, f"{date}/Processed/DF 05/TD/{date} Phantom Set Means CZT TD.parquet"))
     # %%
     # # Phantom Scan Signal Alignment (DataFrame)
 
@@ -138,10 +138,10 @@ for date in tqdm(meas_dates):
     # %%
     # # Save files
 
-    out_path_data = "".join((main_path, f'{date}/Processed/DF 04/TD Decluttered/{date} Phantom Set Means TD Avg Trace Decluttered.parquet'))
-    out_path_clutter = "".join((main_path, f'{date}/Processed/DF 04/TD Decluttered/{date} Phantom Set Means TD Avg Trace Clutter.parquet'))
+    out_path_data = "".join((main_path, f'{date}/Processed/DF 05/TD Decluttered/{date} Phantom Set Means TD Avg Trace Decluttered.parquet'))
+    out_path_clutter = "".join((main_path, f'{date}/Processed/DF 05/TD Decluttered/{date} Phantom Set Means TD Avg Trace Clutter.parquet'))
     if not os.path.exists(os.path.dirname(out_path_data)):
         os.makedirs(os.path.dirname(out_path_data))
-    decluttered.reset_index().to_parquet(out_path_data, engine='pyarrow')
-    clutter.reset_index().to_parquet(out_path_clutter, engine='pyarrow')
+    decluttered.reset_index(drop=True).to_parquet(out_path_data, engine='pyarrow')
+    clutter.reset_index(drop=True).to_parquet(out_path_clutter, engine='pyarrow')
     tqdm.write(f"\nSaved file: {out_path_data}        ")
