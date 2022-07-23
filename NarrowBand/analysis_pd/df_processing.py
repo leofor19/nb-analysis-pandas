@@ -597,7 +597,7 @@ def dfsort_pairs(df, reference_point = "tumor", sort_type = "distance", decimals
                 else:
                     xlabel = 'freq'
 
-                # verification of existance of values to be sorted in dataframe, maintaining sorting order
+                # verification of existence of values to be sorted in dataframe, maintaining sorting order
                 sort_list = ["phantom", "angle", "plug", "attLO", "attRF", "date", "rep", "iter", "pair", xlabel]
                 intersection = [x for x in sort_list if x in frozenset(df_list[-1].columns)]
 

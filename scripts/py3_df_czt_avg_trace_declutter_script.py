@@ -47,7 +47,7 @@ date = "2020_09_18"
 ## Main location path of Pandas DataFrame files (.parquet)
 
 # main_path = "C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/"
-data_path = f"C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/{date}/Processed/DF 05/TD/{date} Phantom Set Means CZT TD.parquet"
+data_path = f"C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScope/{date}/Processed/DF 05/TD Trimmed/{date} Phantom Set Means CZT TD.parquet"
 
 # Main location path of Pandas DataFrame files (.parquet)
 

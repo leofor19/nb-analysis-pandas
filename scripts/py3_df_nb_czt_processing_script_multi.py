@@ -7,7 +7,7 @@
 # 2022/07/19
 
 """Script for converting narrowband (NB) data scans (from Pandas DataFrames) from Frequency Domain (FD) to Time Domain (TD) via Chirp-Z Transform (CZT),
-as well as perform time-domain signal alignment (via cross-correlation) and normalizion.
+as well as perform time-domain signal alignment (via cross-correlation) and normalization.
 
 This version performs a routine through multiple parquet files in the specified dates/folder.
 
@@ -205,9 +205,11 @@ for date in tqdm(meas_dates):
 
     dfout['magnitude'] = dfout['signal'].abs()
     dfout['power'] = dfout['signal']**2
+    dfout['power_dBm'] = dfproc.volts2dBm(dfout['signal'])
 
     dfout1['magnitude'] = dfout1['signal'].abs()
     dfout1['power'] = dfout1['signal']**2
+    dfout['power_dBm'] = dfproc.volts2dBm(dfout['signal'])
 
     # del df, df1
 
@@ -215,4 +217,10 @@ for date in tqdm(meas_dates):
     if not os.path.exists(os.path.dirname(out_path_data)):
         os.makedirs(os.path.dirname(out_path_data))
     dfout1.reset_index(drop=True).to_parquet(out_path_data, engine='pyarrow')
+    tqdm.write(f"\nSaved file: {out_path_data}        ")
+
+    out_path_data = "".join((main_path, f'{date}/Processed/DF 05/TD Trimmed/{date} Phantom Set Means CZT TD.parquet'))
+    if not os.path.exists(os.path.dirname(out_path_data)):
+        os.makedirs(os.path.dirname(out_path_data))
+    dfout.reset_index(drop=True).to_parquet(out_path_data, engine='pyarrow')
     tqdm.write(f"\nSaved file: {out_path_data}        ")

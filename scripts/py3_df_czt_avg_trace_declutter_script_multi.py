@@ -92,7 +92,7 @@ target_time = safe_arange(0, 40e-9 + 5e-10, step = 5e-10)
 # %%
 for date in tqdm(meas_dates):
 
-    data_path = "".join((main_path, f"{date}/Processed/DF 05/TD/{date} Phantom Set Means CZT TD.parquet"))
+    data_path = "".join((main_path, f"{date}/Processed/DF 05/TD Trimmed/{date} Phantom Set Means CZT TD.parquet"))
     # %%
     # # Phantom Scan Signal Alignment (DataFrame)
 

@@ -230,7 +230,7 @@ def place_czt_value(czt_data, f, freqs, df, pair = None, quadrant = 1, I=2, Q=1,
     df : Pandas df
         df with original narrowband data
     czt_data : np.array-like
-        array in contruction with czt signals
+        array in construction with czt signals
     pair : None or str
         antenna pair to assign values (for phantom scans only), by default None
     quadrant : int, optional
