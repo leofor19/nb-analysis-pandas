@@ -30,9 +30,11 @@ Written by: Leonardo Fortaleza
 import os.path
 
 # Third-party library imports
+import matplotlib.pyplot as plt
 from natsort import natsort_keygen
 import numpy as np
 import pandas as pd
+import seaborn as sns
 # from tqdm import tqdm # when using terminal
 from tqdm.autonotebook import tqdm # when using Jupyter Notebook
 
@@ -41,7 +43,8 @@ from NarrowBand.analysis_pd import df_antenna_space as dfant
 from NarrowBand.analysis_pd import df_processing as dfproc
 
 
-def scr_per_pair(df, df_ref, data_col = ['sig2power'], info_cols = ['phantom', 'angle', 'plug', 'date', 'rep', 'iter', 'pair', 'Tx', 'Rx', 'attLO', 'attRF']):
+def scr_per_pair(df, df_ref, data_col = ['sig2power'], info_cols = ['phantom', 'angle', 'plug', 'date', 'rep', 'iter', 'pair', 'Tx', 'Rx', 'attLO', 'attRF'],
+                    noise_level_dB = -70):
 
     if not isinstance(data_col, list):
         data_col = [data_col]
@@ -49,8 +52,10 @@ def scr_per_pair(df, df_ref, data_col = ['sig2power'], info_cols = ['phantom', '
     dfsum = df.groupby(info_cols).agg({data_col: np.sum}).reset_index()
     dfsum_ref = df_ref.groupby(info_cols).agg({col: np.sum for col in data_col}).reset_index()
 
-    dfsum['power_dB'] = 10*np.log10(dfsum[data_col].values)
-    dfsum_ref['power_dB'] = 10*np.log10(dfsum_ref[data_col].values)
+    # Decibel conversion, values <=0 stay at noise_level_dB (warnings unnecessary)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        dfsum.loc[:, 'power_dB'] = 10*np.log10(dfsum.loc[:, 'data_col'].values, where= dfsum.loc[:, 'data_col'] > 0, out = (noise_level_dB/10) *np.ones(dfsum.loc[:, 'data_col'].size));
+        dfsum_ref.loc[:, 'power_dB'] = 10*np.log10(dfsum_ref.loc[:, 'data_col'].values, where= dfsum_ref.loc[:, 'data_col'] > 0, out = (noise_level_dB/10) *np.ones(dfsum_ref.loc[:, 'data_col'].size));
 
     dfsum.sort_values('pair', inplace = True, key= natsort_keygen())
     dfsum_ref.sort_values('pair', inplace = True, key= natsort_keygen())
@@ -61,6 +66,10 @@ def scr_per_pair(df, df_ref, data_col = ['sig2power'], info_cols = ['phantom', '
 
     for col in data_col:
         scr_df[col] = dfsum[col].values - dfsum_ref[col].values
+
+    if 'pair' in info_cols:
+        scr_df.loc[:, 'Tx'] = scr_df.pair.astype('str').str.extract('(\d+),').astype(int).values
+        scr_df.loc[:, 'Rx'] = scr_df.pair.astype('str').str.extract(',(\d+)').astype(int).values
 
     scr_df.rename({'power_dB' : 'SCR'}, axis = 1, inplace = True)
 
@@ -153,3 +162,48 @@ def scr_sort_pairs(scr_df, reference_point = "tumor", sort_type = "distance", de
         df_list = pd.concat(df_list, axis = 0)
 
     return df_list
+
+def scr_heatmap(scr_df, value_col = 'SCR', vmin = -1, vmax = 1, figsize= (20,10), font_scale=1, save_fig = False, dpi = 600,
+                output_folder = 'C:/Users/leofo/OneDrive - McGill University/Documents McGill/Thesis/Figures/Ch 6/',
+                file_name = 'SCR_Heatmap.pdf',
+                **kwargs):
+    """Generate heatmap from SCR dataframe.
+
+    Can either plot figure or save to file.
+
+    Parameters
+    ----------
+    scr_df : Pandas DataFrame
+        SCR DataFrame
+    value_col: str, optional
+        column with values, by default 'SCR'
+    vmin : int, optional
+        minimum colorbar value, by default -1
+    vmax : int, optional
+        maximum colorbar value, by default 1
+    figsize : tuple, optional
+        figure dimensions in inches, by default (20,10)
+    font_scale : int, optional
+        font scale, by default 1
+    save_fig : bool, optional
+        set to True to save figure, by default False
+    dpi : int, optional
+        dots per inch, by default 600
+    output_folder : str, optional
+        output file folder, by default 'C:/Users/leofo/OneDrive - McGill University/Documents McGill/Thesis/Figures/Ch 6/'
+    file_name : str, optional
+        output file name with format, by default 'SCR_Heatmap.pdf'
+    """
+    scr_table = scr_df.pivot(index = 'Tx', columns = 'Rx', values = value_col)
+    sns.set(rc={'figure.figsize':figsize}, font_scale = font_scale)
+
+    plt.figure()
+    g = sns.heatmap(scr_table, annot=True, fmt='.2f', center=None, vmin = vmin, vmax = vmax, cbar_kws={'label': 'SCR (dB)'},
+                    **kwargs)
+    # g.invert_yaxis()
+
+    if save_fig:
+        if not os.path.exists(os.path.dirname(output_folder)):
+            os.makedirs(os.path.dirname(output_folder))
+        g.figure.savefig("".join((output_folder, file_name)), dpi=dpi, bbox_inches="tight")
+    plt.show()
