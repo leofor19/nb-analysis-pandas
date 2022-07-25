@@ -71,6 +71,9 @@ main_path = "C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScop
 
 out_path = "C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/Analysis/{}/TD Decluttered/".format(datetime.now().strftime("%Y_%m_%d"))
 
+# Lowest noise level in dB (replaces absolute values < 0)
+noise_level_dB = -70
+
 ## FFT Window Type ('hann', 'BlackmanHarris92', None, etc):
 window_type = 'hann'
 
@@ -132,8 +135,10 @@ for date in tqdm(meas_dates):
     decluttered.loc[:, 'sig2power'] = decluttered.loc[:, 'signal']**2
     dfa.loc[:, 'sig2power'] = dfa.loc[:, 'signal']**2
 
-    decluttered.loc[:, 'sig2dB'] = 10*np.log10(decluttered.loc[:, 'signal']**2)
-    dfa.loc[:, 'sig2dB'] = 10*np.log10(dfa.loc[:, 'signal']**2)
+    # Decibel conversion, values <=0 stay at noise_level_dB (warnings unnecessary)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        decluttered.loc[:, 'sig2dB'] = 10*np.log10(decluttered.loc[:, 'signal']**2, where= decluttered.loc[:, 'signal']**2 > 0, out = (noise_level_dB/10) *np.ones(decluttered.loc[:, 'signal'].size))
+        dfa.loc[:, 'sig2dB'] = 10*np.log10(dfa.loc[:, 'signal']**2, where= dfa.loc[:, 'signal']**2 > 0, out = (noise_level_dB/10) *np.ones(dfa.loc[:, 'signal'].size))
 
     # %%
     # # Save files

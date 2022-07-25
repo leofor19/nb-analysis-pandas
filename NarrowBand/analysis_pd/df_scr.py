@@ -49,20 +49,30 @@ def scr_per_pair(df, df_ref, data_col = ['sig2power'], info_cols = ['phantom', '
     if not isinstance(data_col, list):
         data_col = [data_col]
 
-    dfsum = df.groupby(info_cols).agg({data_col: np.sum}).reset_index()
+    dfsum = df.groupby(info_cols).agg({col: np.sum for col in data_col}).reset_index()
     dfsum_ref = df_ref.groupby(info_cols).agg({col: np.sum for col in data_col}).reset_index()
 
-    # Decibel conversion, values <=0 stay at noise_level_dB (warnings unnecessary)
-    with np.errstate(divide='ignore', invalid='ignore'):
-        dfsum.loc[:, 'power_dB'] = 10*np.log10(dfsum.loc[:, 'data_col'].values, where= dfsum.loc[:, 'data_col'] > 0, out = (noise_level_dB/10) *np.ones(dfsum.loc[:, 'data_col'].size));
-        dfsum_ref.loc[:, 'power_dB'] = 10*np.log10(dfsum_ref.loc[:, 'data_col'].values, where= dfsum_ref.loc[:, 'data_col'] > 0, out = (noise_level_dB/10) *np.ones(dfsum_ref.loc[:, 'data_col'].size));
+    for col in data_col:
+        if len(data_col) == 1:
+            dbname = 'power_dB'
+        else:
+            dbname = "".join((col,"_dB"))
+        # Decibel conversion, values <=0 stay at noise_level_dB (warnings unnecessary)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            dfsum.loc[:, dbname] = 10*np.log10(dfsum.loc[:, col].values, where= dfsum.loc[:, col] > 0, out = (noise_level_dB/10) *np.ones(dfsum.loc[:, col].size));
+            dfsum_ref.loc[:, dbname] = 10*np.log10(dfsum_ref.loc[:, col].values, where= dfsum_ref.loc[:, col] > 0, out = (noise_level_dB/10) *np.ones(dfsum_ref.loc[:, col].size));
 
     dfsum.sort_values('pair', inplace = True, key= natsort_keygen())
     dfsum_ref.sort_values('pair', inplace = True, key= natsort_keygen())
 
     scr_df = dfsum.loc[:, [elem for elem in info_cols if elem not in ['Tx', 'Rx']]] # Tx and Rx create problems here
 
-    data_col.append('power_dB')
+    if len(data_col) == 1:
+        data_col.append('power_dB')
+    else:
+        colcopy = data_col.copy()
+        for col in data_col:
+            data_col.append("".join((col,"_dB")))
 
     for col in data_col:
         scr_df[col] = dfsum[col].values - dfsum_ref[col].values
@@ -206,4 +216,5 @@ def scr_heatmap(scr_df, value_col = 'SCR', vmin = -1, vmax = 1, figsize= (20,10)
         if not os.path.exists(os.path.dirname(output_folder)):
             os.makedirs(os.path.dirname(output_folder))
         g.figure.savefig("".join((output_folder, file_name)), dpi=dpi, bbox_inches="tight")
-    plt.show()
+    else:
+        plt.show()
