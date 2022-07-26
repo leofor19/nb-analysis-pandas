@@ -216,6 +216,73 @@ def auto_time_array(f, periods = 1, step_division = 1, start = None, max_time = 
     # t = safe_arange(start, max_time, step = tstep)
     return t
 
+def auto_freq_array(t, periods = 1, step_division = 1, start = None, max_freq = None, fstep = None):
+    """Generate default fft frequency array.
+
+    When setting start, max_time or tstep as None, uses default FFT time array as basis by performing [np.fft.fftshift(np.fft.fftfreq(nf, df/step_division))].
+
+    For more automated functionality, only alter periods and step_division.
+
+    Function applies np.arange for periods different from 1 and for cases with user-defined start, max_time or tstep.
+
+    Parameters
+    ----------
+    t : np.array-like
+        input time array
+    periods : int, optional
+        number of periods to use, by default 1
+    step_division : int, optional
+        integer to divide time step, by default 1
+    start : None or float, optional
+        initial frequency position, by default None
+    max_freq : None or float, optional
+        final frequency position, by default None
+    fstep : None or float, optional
+        frequency step, by default None
+
+    Returns
+    -------
+    f : np.array
+        output frequency array for converting signal to Frequency Domain
+    """
+
+    if t[0] < 0:
+        # Input frequency array
+        nt = int(len(t)/2)
+        tspan = t[-1] - 0
+        dt = tspan / (nt - 1)  # more accurate than f[1] - f[0]
+    else:
+        # Input frequency array
+        nt = len(t)
+        tspan = t[-1] - t[0]
+        dt = tspan / (nt - 1)  # more accurate than f[1] - f[0]
+
+    # Output time array (from cbz.freq2time())
+    # Default to FFT time sweep
+    if (fstep is None) or (start is None) or (max_freq is None) :
+        f = np.fft.fftshift(np.fft.fftfreq(nt, dt))
+
+    # adjustments to default FFT array
+    if (start is not None) or (max_freq is not None) or (periods != 1):
+        periods = np.around(periods)
+        if fstep is None:
+            fstep = (f[-1] - f[0]) / (len(f)) / step_division
+        if start is None:
+            start = f[0] / periods
+        if max_freq is None:
+            max_freq = f[-1] / periods
+
+        f = safe_arange(start, max_freq, step = fstep)
+
+    # # final time is chosen *multiple* divided by max frequency
+    # max_time = multiple / (8*df)
+
+    # # time step is 1 divided by *multiple* times the frequency step
+    # tstep = 1/(4*multiple*f[-1])
+
+    # t = safe_arange(start, max_time, step = tstep)
+    return f
+
 def place_czt_value(czt_data, f, freqs, df, pair = None, quadrant = 1, I=2, Q=1, signal='voltage', fscale = 1e6):
     """Place czt signal complex value in correct position in array.
 
@@ -441,7 +508,7 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
 
         for data in tqdm(df_list):
             in_process = []
-            data.reset_index(inplace=True)
+            data.reset_index(drop=True, inplace=True)
             freq = data.freq.unique()
             freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data_shape = np.zeros(freqs.shape, dtype=complex)
@@ -490,7 +557,7 @@ def df_to_freq_domain(df, max_freq = None, freq_step = None, min_freq = None, co
         processed = []
 
         for data in tqdm(df_list):
-            data.reset_index(inplace=True)
+            data.reset_index(drop=True, inplace=True)
             freq = data.freq.unique()
             freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data = np.zeros(freqs.shape, dtype=complex)
@@ -634,7 +701,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
 
         for data in tqdm(df_list):
             in_process = []
-            data.reset_index(inplace=True)
+            data.reset_index(drop=True, inplace=True)
             freq = data.freq.unique()
             freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data_shape = np.zeros(freqs.shape, dtype=complex)
@@ -695,7 +762,7 @@ def df_invert_to_time_domain(df, max_freq = None, freq_step = None, t = 'auto', 
 
         processed = []
         for data in tqdm(df_list):
-            data.reset_index(inplace=True)
+            data.reset_index(drop=True, inplace=True)
             freq = data.freq.unique()
             freqs = generate_freq_array(freq, max_freq = max_freq, freq_step = freq_step, min_freq = min_freq, fscale = fscale, extra_freqs = extra_freqs)
             czt_data = np.zeros(freqs.shape, dtype=complex)
@@ -780,7 +847,7 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym_partial = False, con
 
         for data in tqdm(df_list):
             data = deepcopy(data)
-            data.reset_index(inplace=True)
+            data.reset_index(drop=True, inplace=True)
             in_process = []
             for p in data.pair.unique():
                 scan = data.loc[(data.pair.eq(p))]
@@ -869,6 +936,109 @@ def czt_df_invert_to_time_domain(czt_df, t = None, conj_sym_partial = False, con
                 iczt_df["voltage_unit"] = 'V'
             else:
                 iczt_df["voltage_unit"] = data.voltage_unit.unique()[0]
+
+            processed.append(iczt_df)
+
+    df_out = pd.concat(processed, axis=0, ignore_index=True)
+    return df_out
+
+def td_df_invert_to_freq_domain(td_df, f = safe_arange(2012.5e6, 2100e6 + 12.5e6, step=12.5e6), periods = 1, step_division = 1, fstep = 12.5e6):
+    """Convert TD DataFrame into new DataFrame with converted FD signals.
+
+    The new DataFrame contains columns for each antenna pair, for which there are two subcolumns: frequencies and converted ICZT signal.
+
+    The ICZT signal is the time domain representation of the scans, converted using the Inverse Chirp-Z Transform algorithm.
+
+    Parameters
+    ----------
+    td_df : Pandas df
+        DataFrame with reconstructed TD signals (time domain)
+    f : np.ndarray
+        frequencies for output signal, optional, defaults to standard FFT time sweep
+    periods : int, optional
+        number of periods to use, by default 1
+    step_division : int, optional
+        integer to divide time step, by default 1
+    fstep : None or float, optional
+        frequency step, by default 5e-10
+
+    Returns
+    -------
+    fd_df : Pandas df
+        output DataFrame with FD signals (frequency domain)
+    """
+    if "phantom" in td_df.columns:
+        if "cal_type" in td_df.columns:
+            df_list = dfproc.split_df(td_df, groups=["cal_type", "phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"])
+        else:
+            df_list = dfproc.split_df(td_df, groups=["phantom", "angle", "plug", "date", "rep", "iter", "attLO", "attRF"])
+
+
+        processed = []
+
+        for data in tqdm(df_list):
+            data = deepcopy(data)
+            data.reset_index(drop=True, inplace=True)
+            in_process = []
+            for p in data.pair.unique():
+                scan = data.loc[(data.pair.eq(p))]
+                times = scan.time.to_numpy()
+                czt_data = scan.signal.to_numpy()
+                if f == 'auto':
+                    f2 = auto_freq_array(times, periods = periods, step_division = step_division, start = None, fstep = fstep)
+                else:
+                    f2 = f
+                # N = int(len(czt_data)/2)
+                freqs, sig_f = czt.time2freq(times, czt_data, f=f2)
+                fd_data = pd.DataFrame({'sample': np.arange(0,len(sig_f)) , 'freq': freqs*1e-6, 'signal': sig_f, 'voltage_mag': np.abs(sig_f), 'voltage_phase': np.angle(sig_f)})
+                # td_data.columns = pd.MultiIndex.from_product([[p],['time','signal']])
+                fd_data["pair"] = p
+                fd_data["Tx"] = int(data.loc[data.pair.eq(p), 'Tx'].unique())
+                fd_data["Rx"] = int(data.loc[data.pair.eq(p), 'Rx'].unique())
+                if "distance" in data.columns:
+                    fd_data["distance"] = data.loc[data.pair.eq(p), 'distance'].unique()[0]
+                in_process.append(fd_data)
+
+            iczt_df = pd.concat(in_process, axis=0, ignore_index=True)
+
+            iczt_df["phantom"] = int(data.phantom.unique())
+            iczt_df["angle"] = int(data.angle.unique())
+            iczt_df["plug"] = int(data.plug.unique())
+            iczt_df["date"] = data.date.unique()[0]
+            iczt_df["rep"] = int(data.rep.unique())
+            iczt_df["iter"] = int(data.iter.unique())
+            iczt_df["attLO"] = data.attLO.unique()[0]
+            iczt_df["attRF"] = data.attRF.unique()[0]
+            iczt_df["digital_unit"] = data.digital_unit.unique()[0]
+            iczt_df["voltage_unit"] = data.voltage_unit.unique()[0]
+            if "cal_type" in data.columns:
+                iczt_df["cal_type"] = data.cal_type.unique()[0]
+
+            processed.append(iczt_df)
+
+    else:
+        df_list = dfproc.split_df(td_df, groups=["cal_type", "date", "rep", "iter", "attLO", "attRF"])
+
+        processed = []
+        for data in tqdm(df_list):
+            times = data.time.to_numpy()
+            czt_data = data.signal.to_numpy()
+            if f == 'auto':
+                f2 = auto_freq_array(times, periods = periods, step_division = step_division, start = None, fstep = fstep)
+            else:
+                f2 = f
+            # N = int(len(czt_data)/2)
+            freqs, sig_f = czt.freq2time(times, czt_data, f=f2)
+            iczt_df = pd.DataFrame({'sample': np.arange(0,len(sig_f)) , 'freq': freqs*1e-6, 'signal': sig_f, 'voltage_mag': np.abs(sig_f), 'voltage_phase': np.angle(sig_f)})
+
+            iczt_df["cal_type"] = data.cal_type.unique()[0]
+            iczt_df["date"] = data.date.unique()[0]
+            iczt_df["rep"] = int(data.rep.unique())
+            iczt_df["iter"] = int(data.iter.unique())
+            iczt_df["attLO"] = data.attLO.unique()[0]
+            iczt_df["attRF"] = data.attRF.unique()[0]
+            iczt_df["digital_unit"] = data.digital_unit.unique()[0]
+            iczt_df["voltage_unit"] = data.voltage_unit.unique()[0]
 
             processed.append(iczt_df)
 
@@ -1313,7 +1483,7 @@ def correct_positive_pulses3(df, ref, column = 'signal', percent_tol = 0.05):
     processed = []
 
     for data in tqdm(df_list):
-        data.reset_index(inplace=True)
+        data.reset_index(drop=True, inplace=True)
         xcorr = signal.correlate((data[column] - data[column].mean()) / np.std(data[column]), (ref - np.mean(ref)) / np.std(ref), mode='full', method='auto') / min(len(data[column]),len(ref)) # normalized cross-correlation
         if np.abs((1 - percent_tol) * np.max(xcorr)) > np.abs(np.min(xcorr)):
             data['sign'] = 1
@@ -1349,7 +1519,7 @@ def normalize_pulses(df, column = 'signal', use_sd = False, ddof=0):
     processed = []
 
     for data in tqdm(df_list):
-        data.reset_index(inplace=True)
+        data.reset_index(drop=True, inplace=True)
         if use_sd:
             data['normalization'] = data[column].std(ddof=ddof)
             data[column] =  (data[column] - data[column].mean()) / data[column].std(ddof=ddof)
@@ -1381,7 +1551,7 @@ def normalize2positive_pulses(df, column = 'signal', percent_tol = 0.15, abs_tol
     processed = []
 
     for data in tqdm(df_list):
-        data.reset_index(inplace=True)
+        data.reset_index(drop=True, inplace=True)
         data[column] =  data[column] - data[column].mean()
         data['abs_max'] = data[column].abs().max()
         data['max'] = data[column].max()

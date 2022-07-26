@@ -71,7 +71,7 @@ main_path = "C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/PScop
 
 out_path = "C:/Users/leofo/OneDrive - McGill University/Narrow Band Data1/Analysis/{}/TD Decluttered/".format(datetime.now().strftime("%Y_%m_%d"))
 
-# Lowest noise level in dB (replaces absolute values < 0)
+# Noise level in dB (replaces absolute values < 0)
 noise_level_dB = -70
 
 ## FFT Window Type ('hann', 'BlackmanHarris92', None, etc):
